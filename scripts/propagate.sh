@@ -13,7 +13,7 @@
 #             : TARGETDIR   = (/target_directory/)
 #             : HOSTFILE    = (file that contains list of hosts) TIP: use machines.lst
 # --------------------------------------------------------------------------
-#!/bin/bash
+
 showUsage() {
   echo "Usage:"
   echo "$0 [sourcefile] [targetdir] [hostsfile]"
