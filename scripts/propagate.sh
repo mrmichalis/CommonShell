@@ -26,18 +26,16 @@ if [ $# -lt 2 ]; then
     showUsage
     exit 1
 fi
+if [ "${1:0:1}" != "/" ]; then
+  echo "You must give an absolute path!"
+  if ! return > /dev/null 2>&1 ; then exit ; fi
+fi
 
 SOURCEFILE=$1
 shift 1
 HOSTFILE=$1
 shift 1
 TARGETDIR="$SOURCEFILE"
-
-if [ "${SOURCEFILE:0:1}" != "/" ]; then
-  echo "You must give an absolute path!"
-  if ! return > /dev/null 2>&1 ; then exit ; fi
-fi
-
 
 if [ -f $SOURCEFILE ]; then
    echo "File found, preparing to transfer"
