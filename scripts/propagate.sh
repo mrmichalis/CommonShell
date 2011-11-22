@@ -36,13 +36,14 @@ shift 1
 
 if [ -f $SOURCEFILE ]; then
    echo "File found, preparing to transfer"
-   while read server
-   do
-      echo
-      echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
-      echo "Connected to: ${server}"
-      echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
-      scp -p $SOURCEFILE ${server}:$TARGETDIR
+   while read server;    do
+     if [ ! -z $server ]; then
+        echo
+        echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+        echo "Connected to: ${server}"
+        echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+        scp -p $SOURCEFILE ${server}:$TARGETDIR
+     fi
    done < $HOSTFILE
 else
    echo "File $SOURCEFILE not found..."
