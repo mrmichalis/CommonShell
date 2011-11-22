@@ -11,7 +11,7 @@
 # PARAMETERS  :
 #             : SOURCEFILE  = (/source_path/source_filename)
 #             : TARGETDIR   = (/target_directory/)
-#             : HOSTFILE    = (file that contains list of hosts) TIP: use machines.lst
+#             : HOSTFILE    = (file that contains list of hosts) TIP: use machines.txt
 # --------------------------------------------------------------------------
 
 showUsage() {
@@ -39,7 +39,7 @@ TARGETDIR="$SOURCEFILE"
 
 if [ -f $SOURCEFILE ]; then
    echo "File found, preparing to transfer"
-   while read server;    do
+   while read server; do
      if [ ! -z $server ]; then
         echo
         echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
