@@ -6,7 +6,7 @@
 #
 # SYNOPSIS    : Generic script to copy files from one host to a group of hosts
 #
-# VERSION     : 1.0
+# VERSION     : 1.0.1
 #
 # PARAMETERS  :
 #             : SOURCEFILE  = (/source_path/source_filename)
@@ -16,23 +16,28 @@
 
 showUsage() {
   echo "Usage:"
-  echo "$0 [sourcefile] [targetdir] [hostsfile]"
+  echo "$0 [sourcefile] [hostsfile]"
   echo "Copy files from one host to a group of hosts."
-  echo "  SOURCEFILE  = (/source_path/source_filename)"
-  echo "  TARGETDIR   = (/target_directory/)"
-  echo "  HOSTFILE    = (file that contains list of hosts) TIP: use machines.lst"
+  echo "  SOURCEFILE  = (/absolute_source_path/source_filename)"
+  echo "  HOSTFILE    = (file that contains list of hosts) TIP: use machines.txt"
 }
 
-if [ $# -lt 3 ]; then
+if [ $# -lt 2 ]; then
     showUsage
     exit 1
 fi
+
 SOURCEFILE=$1
-shift 1
-TARGETDIR=$1
 shift 1
 HOSTFILE=$1
 shift 1
+TARGETDIR="$SOURCEFILE"
+
+if [ "${SOURCEFILE:0:1}" != "/" ]; then
+  echo "You must give an absolute path!"
+  if ! return > /dev/null 2>&1 ; then exit ; fi
+fi
+
 
 if [ -f $SOURCEFILE ]; then
    echo "File found, preparing to transfer"
