@@ -44,6 +44,7 @@ if [ -f $SOURCEFILE ]; then
         echo
         echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
         echo "Connected to: ${server}"
+        echo "      Source: ${SOURCEFILE}"
         echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
         scp -p $SOURCEFILE ${server}:$TARGETDIR
      fi
