@@ -1,15 +1,15 @@
 #!/bin/bash
 # --------------------------------------------------------------------------
-# TITLE : safestop.sh
+# TITLE       : safestop.sh
 #
-# AUTHOR : Michalis Kongtongk
+# AUTHOR      : Michalis
 #
-# SYNOPSIS : Generic script to stop a process from it's PID into a file
+# SYNOPSIS    : Generic script to stop a process from it's PID into a file
 #
-# VERSION : 1.0
+# VERSION     : 1.0
 #
-# PARAMETERS :
-# : PIDFILE = (/source_path/source_filename)
+# PARAMETERS  :
+#             : PIDFILE = (/source_path/source_filename)
 # --------------------------------------------------------------------------
 
 SLEEP=5

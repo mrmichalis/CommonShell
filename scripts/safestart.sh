@@ -1,16 +1,16 @@
-#!/bin/bash
+#!/bin/env bash
 # --------------------------------------------------------------------------
-# TITLE : safestart.sh
+# TITLE         : safestart.sh
 #
-# AUTHOR : Michalis Kongtongk
+# AUTHOR        : Michalis
 #
-# SYNOPSIS : Generic script to start a process and dump it's PID into a file
+# SYNOPSIS      : Generic script to start a process and dump it's PID into a file
 #
-# VERSION : 1.0
+# VERSION       : 1.0
 #
-# PARAMETERS :
-# : PIDFILE = (/source_path/source_filename)
-# : COMMAND = (/target_directory/)
+# PARAMETERS    :
+#               : PIDFILE = (/source_path/source_filename)
+#               : COMMAND = (/target_directory/)
 # --------------------------------------------------------------------------
 
 if [ $# -lt 2 ]; then

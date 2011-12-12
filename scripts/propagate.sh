@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------
 # TITLE       : propagate.sh
 #
-# AUTHOR      : Michalis Kongtongk
+# AUTHOR      : Michalis
 #
 # SYNOPSIS    : Generic script to copy files from one host to a group of hosts
 #
