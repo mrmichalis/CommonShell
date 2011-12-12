@@ -44,13 +44,6 @@ SYSTEM_HOSTS_DOMAIN="lme.co.uk"
 
 THIS_HOST=`hostname | sed s/\\\..\*//g`
 case $THIS_HOST in
-  IT004950*)
-    rm -Rf /opt/select/housekeeping/TE
-    rm -Rf /opt/select/TE
-    unzip TE_SLO.zip -d /opt/select
-    NEW_PRIMARY_HOST="root@10.83.53.194"
-    echo "Primary Host will be $NEW_PRIMARY_HOST"
-  ;;
   slolmeprds7al01*)
     NEW_PRIMARY_HOST="baslmeprds7al01"
     echo "Primary Host will be $NEW_PRIMARY_HOST"
@@ -205,7 +198,6 @@ activateNewPrimary(){
   echo "$NEW_PRIMARY_HOST is now Primary"
 }
 
-#set -x
 isPrimaryHost
 initWorkDir
   doBackup "$TE_WORKDIR" "$THIS_HOST-backup-$TIMESTAMP"
@@ -213,5 +205,5 @@ updateXml
 updateSHFiles
   doBackup "$TE_WORKDIR" "$THIS_HOST-$NEW_PRIMARY_HOST-$TIMESTAMP"
 disableCurrentPrimary
-#activateNewPrimary
-#set +x
+activateNewPrimary
+
