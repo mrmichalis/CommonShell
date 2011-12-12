@@ -1,12 +1,20 @@
 #!/usr/bin/env python
+# --------------------------------------------------------------------------
+#
+# 12/12/2011 Michalis
+#
+# used to scan IP and ports 
+# Requires file "ip.lst" and "ports.lst"
+#
+# --------------------------------------------------------------------------
 from socket import *
 
 if __name__ == '__main__':
 
-  for target in open('smart-ip.lst', 'r'):
+  for target in open('ip.lst', 'r'):
     targetIP = gethostbyname(target)
     print 'Starting scan on host %s ' % (targetIP,) 
-    for port in open('smart-ports.lst', 'r'):
+    for port in open('ports.lst', 'r'):
       s = socket(AF_INET, SOCK_STREAM)
       result = s.connect_ex((targetIP, int(port)))
       if(result == 0) :
