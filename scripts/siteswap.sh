@@ -11,8 +11,7 @@
 # initWorkDir                           | initialize /opt/select/housekeeping/TE copies files
 # doBackup [DIR_TO_BACKUP] [FILENAME]   | creates a backup 
 # updateXml                             | update ServerConfiguration.xml swapping houstnames around
-# updateSystem                          | update setup_system.sh swapping houstnames around
-# updateNodes                           | update te_nodes.sh swapping houstnames around
+# updateSHFiles                         | update setup_system.sh & te_nodes.sh swapping houstnames around
 # disableCurrentPrimary                 | remove configuration files in /cfg folder
 # activateNewPrimary                    | copies/scp te_nodes.sh setup_system.sh and /cfg folder to the new Primary Host
 #
