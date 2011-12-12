@@ -12,5 +12,5 @@ if __name__ == '__main__':
       if(result == 0) :
           print 'Port %d: OPEN' % (int(port),)
       else:
-          print 'Port %d: OPEN' % (int(port),)
+          print 'Port %d: CLOSE' % (int(port),)
       s.close()
