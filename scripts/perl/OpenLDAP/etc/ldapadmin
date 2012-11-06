@@ -1462,7 +1462,6 @@ sub modify_user {
 
     ## modify homedir
     if ( $params->{home} ) {
-
         # do a basic path check - start with /  and contains /A-Za-z0-9
         if ( $params->{home} !~ /^\/[\/A-Za-z0-9]*$/ ) {
             &return_message( "WARN",
@@ -1511,9 +1510,27 @@ sub modify_user {
         }
     }
 
-    ## modify shell
+    ## modify description
     if ( $params->{description} ) {
 
+        &return_message( "WARN",
+            "Overriding sn,cn,description with $params->{description}" );
+        
+        my $dn = "uid=${old_user},${ou_users},${base}";
+        my $result =
+          $ldap->modify( $dn,
+            changes => [ 'replace' => [ 'description' => "$params->{description}" ] ] );
+          $result =
+          $ldap->modify( $dn,
+            changes => [ 'replace' => [ 'sn' => "$params->{description}" ] ] );
+          $result =
+          $ldap->modify( $dn,
+            changes => [ 'replace' => [ 'cn' => "$params->{description}" ] ] );          
+        if ( $result->code ) {
+            &return_message( "FATAL",
+                "An error occurred binding to the LDAP server: "
+                  . ldap_error_text( $result->code ) );
+        }
     }    
 
     # check if we need to do any thing?
