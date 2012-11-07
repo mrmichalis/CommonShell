@@ -29,6 +29,7 @@ use Net::LDAP;
 use Data::Dumper;
 use Net::LDAP::Util qw(ldap_error_text);
 use Pod::Usage;
+use Net::SSH::AuthorizedKeysFile;
 
 #use Net::LDAP::Entry; <--- sucks as can not `use strict`!!!
 
@@ -758,15 +759,16 @@ sub add_ssh_public_key {
     my $match_count    = @{ $hash{match} };
     my $no_match_count = @{ $hash{no_match} };
     my $do;
+
     if ( $match_count + $no_match_count == $no_match_count ) {
         $do = 'replace';
     }
     else {
         $do = 'add';
     }
-    print $do;
+    &return_message( "INFO", "${do} public key file " . Dumper($hash{no_match}) );
 
-    # need to add the unmatched keys to LDAP
+    #need to add the unmatched keys to LDAP
     if ( $no_match_count > 0 ) {
         my $dn = "uid=${user},${ou_users},${base}";
         my $result =
@@ -2085,7 +2087,7 @@ sub show_ssh_public_keys {
         for ( my $i = 0 ; $i < $key_count ; $i++ ) {
             print "  key [" . $k . "]\n";
             print "  -------\n";
-            print $keys[$i] . "\n\n";
+            print $keys[$i] . "\n\n";         
             $k++;
         }
     }
@@ -2249,7 +2251,7 @@ sub match_ssh_public_key {
     }
     elsif ( $entries == 1 ) {
         my @entry           = $result->entries;
-        my @keys_ldap       = $entry[0]->get_value('sshPublickey');
+        my @keys_ldap       = $entry[0]->get_value('sshPublicKey');
         my $keys_ldap_count = @keys_ldap;
         if ( $keys_ldap_count == 1 ) {
             if ( $keys_ldap[0] eq '' ) { $keys_ldap_count = 0; }
@@ -2692,7 +2694,7 @@ sub check_actions {
             }
             else {
                 &return_message( "FATAL",
-"you need to use the switch --user=<user>  switches --sshkey=<sshkey>"
+"you need to use the switch --user=<user>  switches --sshfile=<sshfile>"
                 );
             }
         }
