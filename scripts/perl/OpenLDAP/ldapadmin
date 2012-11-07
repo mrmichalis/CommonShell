@@ -78,7 +78,7 @@ my @config_locations =
 
 my $ldap;
 my $program       = "ldapadmin";
-my $version       = 1.4;
+my $version       = 1.9;
 my $message_level = 4;
 my $self          = &get_me;
 
@@ -1387,7 +1387,6 @@ sub modify_user {
 
     my ( $curr_user, $params ) = @_;    
     my $skip = 0;
-    my $dn = "uid=${curr_user},${ou_users},${base}";
     my @whatToChange;
     my @ReplaceArray;                 
     &return_message( "DEV", "\$params\n" . Dumper($params) );
@@ -1431,7 +1430,7 @@ sub modify_user {
             if ( !&get_id_name( $ou_users, "uid", $params->{user} ) ) {
                 &return_message( "DEBUG", "Update of user name" );
                 my $result =
-                  $ldap->moddn( $dn, newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
+                  $ldap->moddn( "uid=${curr_user},${ou_users},${base}", newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
 
                 if ( $result->code ) {
                     &return_message( "FATAL",
