@@ -1350,6 +1350,26 @@ sub delete_sudo_role {
 }
 
 ###############
+# LDAP_replace #
+###############
+sub LDAP_modify {
+    my ($dn, $whatToChange) = @_;
+     &return_message( "DEV", "\$whatToChange\n" . Dumper($whatToChange) );
+    # my $dn = "uid=${old_user},${ou_users},${base}";
+    # my $result =
+    #   $ldap->modify( $dn,
+    #     changes => [ 'replace' => [ 'uidNumber' => "$params->{uid}" ] ] );
+    my $result = $ldap->modify ( $dn, changes => [ @$whatToChange ] );
+    if ( $result->code ) {
+        &return_message( "FATAL",
+            "An error occurred binding to the LDAP server: "
+            . ldap_error_text( $result->code ) );
+    }
+
+    return $result;
+}
+
+###############
 # Modify User # In Progress!!
 ###############
 sub modify_user {
@@ -1365,10 +1385,11 @@ sub modify_user {
     # Attributes that need to be able to be modified with moduser action are:
     # cn, sn, description (=sn=cn), gidNumber(notPossible), homeDirectory, loginShell, User Name (uid), uidNumber
 
-    my ( $old_user, $params ) = @_;
-    my @replace;
+    my ( $old_user, $params ) = @_;    
     my $skip = 0;
-    my $dn = "uid=${old_user},${ou_users},${base}";             
+    my $dn = "uid=${old_user},${ou_users},${base}";
+    my @whatToChange;
+    my @ReplaceArray;                 
     &return_message( "DEV", "\$params\n" . Dumper($params) );
 
     # check old user exists
@@ -1443,15 +1464,11 @@ sub modify_user {
                 &return_message( "DEBUG", "Update of user uid" );
 
                 # update uid
-                #my $dn = "uid=${old_user},${ou_users},${base}";
-                my $result =
-                  $ldap->modify( $dn,
-                    changes => [ 'replace' => [ 'uidNumber' => "$params->{uid}" ] ] );
-                if ( $result->code ) {
-                    &return_message( "FATAL",
-                        "An error occurred binding to the LDAP server: "
-                          . ldap_error_text( $result->code ) );
-                }
+                undef @ReplaceArray;
+                undef @whatToChange;
+                @ReplaceArray = ( 'uidNumber', "$params->{uid}" );
+                @whatToChange = ( 'replace', \@ReplaceArray );
+                &LDAP_modify($dn,\@whatToChange);                     
             }
             else {
                 &return_message( "WARN", "uid $params->{uid} already exists" );
@@ -1470,16 +1487,12 @@ sub modify_user {
         }
         &return_message( "WARN",
             "Overriding home directory with $params->{home}" );
-        
-        # my $dn = "uid=${old_user},${ou_users},${base}";
-        my $result =
-          $ldap->modify( $dn,
-            changes => [ 'replace' => [ 'homeDirectory' => "$params->{home}" ] ] );
-        if ( $result->code ) {
-            &return_message( "FATAL",
-                "An error occurred binding to the LDAP server: "
-                  . ldap_error_text( $result->code ) );
-        }
+            
+        undef @ReplaceArray;
+        undef @whatToChange;
+        @ReplaceArray = ( 'homeDirectory', "$params->{home}" );
+        @whatToChange = ( 'replace', \@ReplaceArray );
+        &LDAP_modify($dn,\@whatToChange);        
     }
     
     ## modify shell
@@ -1489,15 +1502,11 @@ sub modify_user {
             &return_message( "WARN", 
                 "Overriding shell with $params->{shell}" );
 
-            # my $dn = "uid=${old_user},${ou_users},${base}";
-            my $result =
-              $ldap->modify( $dn,
-                changes => [ 'replace' => [ 'loginShell' => "$params->{shell}" ] ] );
-            if ( $result->code ) {
-                &return_message( "FATAL",
-                    "An error occurred binding to the LDAP server: "
-                      . ldap_error_text( $result->code ) );
-            }            
+            undef @ReplaceArray;
+            undef @whatToChange;
+            @ReplaceArray = ( 'loginShell', "$params->{shell}" );
+            @whatToChange = ( 'replace', \@ReplaceArray );
+            &LDAP_modify($dn,\@whatToChange);
         }
         else {
             &return_message( "WARN", "shell $params->{shell} is not vaild" );
@@ -1512,24 +1521,18 @@ sub modify_user {
 
     ## modify description
     if ( $params->{description} ) {
-
         &return_message( "WARN",
             "Overriding sn,cn,description with $params->{description}" );
-        # my $dn = "uid=${old_user},${ou_users},${base}";
-        my $result =
-          $ldap->modify( $dn,
-            changes => [ 'replace' => [ 'description' => "$params->{description}" ] ] );
-          $result =
-          $ldap->modify( $dn,
-            changes => [ 'replace' => [ 'sn' => "$params->{description}" ] ] );
-          $result =
-          $ldap->modify( $dn,
-            changes => [ 'replace' => [ 'cn' => "$params->{description}" ] ] );          
-        if ( $result->code ) {
-            &return_message( "FATAL",
-                "An error occurred binding to the LDAP server: "
-                  . ldap_error_text( $result->code ) );
-        }
+        undef @ReplaceArray;
+        undef @whatToChange;
+        @ReplaceArray = ( 
+            'sn', "$params->{description}",
+            'cn', "$params->{description}",
+            'description', "$params->{description}"
+            );
+
+        @whatToChange = ( 'replace', \@ReplaceArray );
+        &LDAP_modify($dn,\@whatToChange);
     }    
 
     # check if we need to do any thing?
