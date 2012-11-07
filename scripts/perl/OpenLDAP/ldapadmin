@@ -53,7 +53,7 @@ my $hostname      = "localhost";
 my $port          = "389";
 my $show_password = "no";
 my $default_shell = "bash";
-my $uri		  = "ldapi:///";
+my $uri       = "ldapi:///";
 
 # the default system group to put users into.
 # this group does not exist in ldap!
@@ -246,7 +246,7 @@ sub usage {
     print "\t  adduser\n";
     print "\t\tRequried\t--user=<s> --comment=<s>\n";
     print "\t\tOptional\t--uid=<i> --homedir=<s> --shell=<s>\n";
-    print "\t\t\t	--defaultgid=<i> --password=<s>\n";
+    print "\t\t\t   --defaultgid=<i> --password=<s>\n";
 
     # Modify User
     print "\t  moduser\n";
@@ -382,14 +382,14 @@ sub add_user {
     # add_user(%hash);
     # this will add a posixAccount into LDAP
     # Groups, SSH Keys, SUDOers is dealt with in other actions!
-    # $params{"user"}*			what do you want to be called today?
-    # $params{"uid"}			only need to override auto assigned uids
-    # 							!! danger will robinson !!
-    # $params{"gid"}			only if you do not want to use the default group
-    # $params{"description"}*	will go to description, cn, sn
-    # $params{"home"}			only needed if not set to /home/<user>
-    # $params{"shell"}			bash, sh, csh, ksh, nologin
-    # $params{"pass"}			crypt md5 password
+    # $params{"user"}*          what do you want to be called today?
+    # $params{"uid"}            only need to override auto assigned uids
+    #                           !! danger will robinson !!
+    # $params{"gid"}            only if you do not want to use the default group
+    # $params{"description"}*   will go to description, cn, sn
+    # $params{"home"}           only needed if not set to /home/<user>
+    # $params{"shell"}          bash, sh, csh, ksh, nologin
+    # $params{"pass"}           crypt md5 password
     # * required to create a user.
 
     my ($params) = @_;
@@ -758,22 +758,33 @@ sub add_ssh_public_key {
     my %hash           = &match_ssh_public_key( $user, $file );
     my $match_count    = @{ $hash{match} };
     my $no_match_count = @{ $hash{no_match} };
-    my $do;
+    
+    # Commented out due to wrong code implementation 
+    # shouldn't be [ changes => [ add => [] ] ] but only [ add => [] 
+    # 
+    # my $do;
+    # if ( $match_count + $no_match_count == $no_match_count ) {
+    #     $do = 'replace';    
+    # }
+    # else {
+    #     $do = 'add';
+    # }
 
-    if ( $match_count + $no_match_count == $no_match_count ) {
-        $do = 'replace';
-    }
-    else {
-        $do = 'add';
-    }
-    &return_message( "INFO", "${do} public key file " . Dumper($hash{no_match}) );
+    # my $dn = "uid=${user},${ou_users},${base}";
+    # my $result = $ldap->modify( $dn,
+    # changes => [ $do => [ 'sshPublicKey' => $hash{no_match} ] ] );
+    # if ( $result->code ) {
+    #     &return_message( "FATAL",
+    #         "An error occurred binding to the LDAP server: "
+    #           . ldap_error_text( $result->code ) );
+    # }
+    # print $do . "\n";    
 
     #need to add the unmatched keys to LDAP
     if ( $no_match_count > 0 ) {
         my $dn = "uid=${user},${ou_users},${base}";
-        my $result =
-          $ldap->modify( $dn,
-            changes => [ $do => [ 'sshPublicKey' => $hash{no_match} ] ] );
+        my $result = 
+        $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
         if ( $result->code ) {
             &return_message( "FATAL",
                 "An error occurred binding to the LDAP server: "
@@ -3685,7 +3696,7 @@ ldapadmin --action=delgroup --group=testgroup --commit
 =item B<Delete Users from a Group>
 
 ldapadmin --action=delgroupuser --user=testuser --group=testgroup
-	
+    
 =item B<Delete SSH Public keys>
 
 ldapadmin --action=delsshkey --user=testuser --sshkey=2
@@ -3725,7 +3736,7 @@ ldapadmin --action=showgroups
 =item B<Show SSH Public keys>
 
 ldapadmin --action=showsshkeys --user=testuser
-	
+    
 =back
 
 =head1 REQUIRES
@@ -3750,6 +3761,6 @@ L<perlpod>, L<perlpodspec>
 
 To Do:
 ## Posix
-Modify User					--action=moduser
+Modify User                 --action=moduser
 `-> if user in a group, update groups
 ## SUDOers
