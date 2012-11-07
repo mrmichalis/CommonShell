@@ -142,7 +142,7 @@ my @actions = (
 
 ## command line switches
 my $input_user;            # --user=<s>
-my $input_old_user;        # --olduser=<s>
+my $input_curr_user;       # --curruser=<s>
 my $input_uid;             # --uid=<i>
 my $input_group;           # --group=<s>
 my $input_old_group;       # --oldgroup=<s>
@@ -178,7 +178,7 @@ GetOptions(
     "man|perldoc|doc"       => \$man,
     "action|a=s"            => \$action,
     "user|u=s"              => \$input_user,
-    "olduser=s"             => \$input_old_user,
+    "curruser=s"            => \$input_curr_user,
     "uid=i"                 => \$input_uid,
     "group=s"               => \$input_group,
     "oldgroup=s"            => \$input_old_group,
@@ -249,7 +249,7 @@ sub usage {
 
     # Modify User
     print "\t  moduser\n";
-    print "\t\tRequried\t--olduser=<s>\n";
+    print "\t\tRequried\t--curruser=<s>\n";
     print "\t\tOptional\t\n";
 
     # Delete User
@@ -352,7 +352,7 @@ sub usage {
     print " --comment=COMMENT\tGECOS field of the new account\n";
     print " --homedir=HOME_DIR\thome directory of new account\n";
     print " --gid=GID\t\tID of the primary group of the new account\n";
-    print " --olduser=USER\t\tlogin user name to update\n";
+    print " --curruser=USER\t\tlogin of the current user name to update\n";
 
     print " --group=GROUP\t\tname of the group\n";
     print " --gid=GID\t\tID of the group\n";
@@ -1355,7 +1355,7 @@ sub delete_sudo_role {
 sub LDAP_modify {
     my ($dn, $whatToChange) = @_;
      &return_message( "DEV", "\$whatToChange\n" . Dumper($whatToChange) );
-    # my $dn = "uid=${old_user},${ou_users},${base}";
+    # my $dn = "uid=${curr_user},${ou_users},${base}";
     # my $result =
     #   $ldap->modify( $dn,
     #     changes => [ 'replace' => [ 'uidNumber' => "$params->{uid}" ] ] );
@@ -1385,15 +1385,15 @@ sub modify_user {
     # Attributes that need to be able to be modified with moduser action are:
     # cn, sn, description (=sn=cn), gidNumber(notPossible), homeDirectory, loginShell, User Name (uid), uidNumber
 
-    my ( $old_user, $params ) = @_;    
+    my ( $curr_user, $params ) = @_;    
     my $skip = 0;
-    my $dn = "uid=${old_user},${ou_users},${base}";
+    my $dn = "uid=${curr_user},${ou_users},${base}";
     my @whatToChange;
     my @ReplaceArray;                 
     &return_message( "DEV", "\$params\n" . Dumper($params) );
 
     # check old user exists
-    my $old_uid = &get_id_name( $ou_users, "uid", $old_user );
+    my $old_uid = &get_id_name( $ou_users, "uid", $curr_user );
     &return_message( "DEBUG", "Old user: ${old_uid}" );
     if ( !$old_uid ) {
         &return_message( "INFO", "${old_uid} does not exist" );
@@ -1421,7 +1421,7 @@ sub modify_user {
         # if we are updating the user name    
         # now updated the user name, required to be done last as we are using `moddn`
         # does new and old user name match?
-        if ( ( !$params->{user} ) || ( $params->{user} eq $old_user ) ) {
+        if ( ( !$params->{user} ) || ( $params->{user} eq $curr_user ) ) {
             &return_message( "DEBUG", "Not updating user name" );
             $skip++;
         }
@@ -1430,7 +1430,6 @@ sub modify_user {
             # check new user does not exist
             if ( !&get_id_name( $ou_users, "uid", $params->{user} ) ) {
                 &return_message( "DEBUG", "Update of user name" );
-                #my $dn = "uid=${old_user},${ou_users},${base}";
                 my $result =
                   $ldap->moddn( $dn, newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
 
@@ -1438,8 +1437,9 @@ sub modify_user {
                     &return_message( "FATAL",
                         "An error occurred binding to the LDAP server: "
                           . ldap_error_text( $result->code ) );
+                    return 1;
                 } else {
-                    $old_user = $params->{user};
+                    $curr_user = $params->{user};
                 }
             }
             else {
@@ -1468,7 +1468,7 @@ sub modify_user {
                 undef @whatToChange;
                 @ReplaceArray = ( 'uidNumber', "$params->{uid}" );
                 @whatToChange = ( 'replace', \@ReplaceArray );
-                &LDAP_modify($dn,\@whatToChange);                     
+                &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );                     
             }
             else {
                 &return_message( "WARN", "uid $params->{uid} already exists" );
@@ -1492,7 +1492,7 @@ sub modify_user {
         undef @whatToChange;
         @ReplaceArray = ( 'homeDirectory', "$params->{home}" );
         @whatToChange = ( 'replace', \@ReplaceArray );
-        &LDAP_modify($dn,\@whatToChange);        
+        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );        
     }
     
     ## modify shell
@@ -1506,7 +1506,7 @@ sub modify_user {
             undef @whatToChange;
             @ReplaceArray = ( 'loginShell', "$params->{shell}" );
             @whatToChange = ( 'replace', \@ReplaceArray );
-            &LDAP_modify($dn,\@whatToChange);
+            &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );
         }
         else {
             &return_message( "WARN", "shell $params->{shell} is not vaild" );
@@ -1532,7 +1532,7 @@ sub modify_user {
             );
 
         @whatToChange = ( 'replace', \@ReplaceArray );
-        &LDAP_modify($dn,\@whatToChange);
+        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );
     }    
 
     # check if we need to do any thing?
@@ -2875,7 +2875,7 @@ sub check_actions {
             }
         }
         when ("moduser") {
-            if ($input_old_user) {
+            if ($input_curr_user) {
                 my $details;
                 $details->{"user"}        = $input_user;
                 $details->{"uid"}         = $input_uid;
@@ -2884,21 +2884,21 @@ sub check_actions {
                 $details->{"home"}        = $input_homedir;
                 $details->{"shell"}       = $input_shell;
                 $details->{"pass"}        = $input_passwd;
-                my $result = &modify_user( $input_old_user, $details );
+                my $result = &modify_user( $input_curr_user, $details );
 
                 if ( !$result ) {
-                    &return_message( "SUCCESS", "Modified ${input_old_user}" );
+                    &return_message( "SUCCESS", "Modified ${input_curr_user}" );
                     exit(0);
                 }
                 else {
                     &return_message( "ERROR",
-                        "Could not modify ${input_old_user}" );
+                        "Could not modify ${input_curr_user}" );
                     exit 1;
                 }
             }
             else {
                 &return_message( "FATAL",
-"you need to use the switch --olduser=<user> with --user=<user> and/or --uid=<uid> and other user switches!!!"
+"you need to use the switch --curruser=<user> with --user=<user> and/or --uid=<uid> and other user switches!!!"
                 );
             }
         }
@@ -3426,7 +3426,7 @@ ldapadmin - create, delete or modify unix users, groups and sudoers permissions 
 
 =item B<ldapadmin> [options]
 
-[--action=<action>] [--comment="<comment>"] [--config=<config_file>] [--commit] [--defaultguid=<gid>] [--homedir=<home_dir] [--user=<user>] [--olduser=<user>] [--uid=<uid>] [--group=<group>] [--gid=<gid>] [--oldgroup=<group>] [--shell=<shell>] [--sshkey=<key_number>] [--sshfile=<authorized_keys>] [--sudorole=<role>] [--sudocmd=<command>] [--help] [--man]
+[--action=<action>] [--comment="<comment>"] [--config=<config_file>] [--commit] [--defaultguid=<gid>] [--homedir=<home_dir] [--user=<user>] [--curruser=<user>] [--uid=<uid>] [--group=<group>] [--gid=<gid>] [--oldgroup=<group>] [--shell=<shell>] [--sshkey=<key_number>] [--sshfile=<authorized_keys>] [--sudorole=<role>] [--sudocmd=<command>] [--help] [--man]
 
 =back
 
@@ -3525,7 +3525,7 @@ The new user will be created using I<HOME_DIR> as the value for the user's login
 
 The login name for the user.
 
-=item B<--olduser>=I<USER>
+=item B<--curruser>=I<USER>
 
 The login name for the user which is to be modified.
 
@@ -3619,7 +3619,7 @@ ldapadmin --action addsudocmd --sudorole %test --sudocmd ALL
 
 =item B<Modify User>
 
-ldapadmin --action=moduser --olduser=testuser --uid=4321
+ldapadmin --action=moduser --curruser=testuser --uid=4321
 
 =item B<Modify Group>
 
