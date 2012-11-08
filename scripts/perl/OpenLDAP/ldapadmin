@@ -1235,7 +1235,6 @@ sub delete_ssh_public_key {
         }
 
         # check if we are doing key or file
-
         if ( $attribute eq "key" ) {
             my $key = $value;
 
@@ -1366,13 +1365,13 @@ sub delete_sudo_role {
 # LDAP_replace #
 ###############
 sub LDAP_modify {
-    my ($dn, $whatToChange) = @_;
+    my ($dn, $do, $whatToChange) = @_;
      &return_message( "DEV", "\$whatToChange\n" . Dumper($whatToChange) );
     # my $dn = "uid=${curr_user},${ou_users},${base}";
     # my $result =
     #   $ldap->modify( $dn,
     #     changes => [ 'replace' => [ 'uidNumber' => "$params->{uid}" ] ] );
-    my $result = $ldap->modify ( $dn, changes => [ @$whatToChange ] );
+    my $result = $ldap->modify ( $dn, changes => [ $do => [ @$whatToChange ] ] );
     if ( $result->code ) {
         &return_message( "FATAL",
             "An error occurred binding to the LDAP server: "
@@ -1443,13 +1442,12 @@ sub modify_user {
             if ( !&get_id_name( $ou_users, "uid", $params->{user} ) ) {
                 &return_message( "DEBUG", "Update of user name" );
                 my $result =
-                  $ldap->moddn( "uid=${curr_user},${ou_users},${base}", newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
-
+                  $ldap->moddn( "uid=${curr_user},${ou_users},${base}", 
+                    newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
                 if ( $result->code ) {
                     &return_message( "FATAL",
                         "An error occurred binding to the LDAP server: "
                           . ldap_error_text( $result->code ) );
-                    return 1;
                 } else {
                     $curr_user = $params->{user};
                 }
@@ -1477,10 +1475,8 @@ sub modify_user {
 
                 # update uid
                 undef @ReplaceArray;
-                undef @whatToChange;
                 @ReplaceArray = ( 'uidNumber', "$params->{uid}" );
-                @whatToChange = ( 'replace', \@ReplaceArray );
-                &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );                     
+                &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
             }
             else {
                 &return_message( "WARN", "uid $params->{uid} already exists" );
@@ -1501,10 +1497,8 @@ sub modify_user {
             "Overriding home directory with $params->{home}" );
             
         undef @ReplaceArray;
-        undef @whatToChange;
         @ReplaceArray = ( 'homeDirectory', "$params->{home}" );
-        @whatToChange = ( 'replace', \@ReplaceArray );
-        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );        
+        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
     }
     
     ## modify shell
@@ -1515,10 +1509,8 @@ sub modify_user {
                 "Overriding shell with $params->{shell}" );
 
             undef @ReplaceArray;
-            undef @whatToChange;
             @ReplaceArray = ( 'loginShell', "$params->{shell}" );
-            @whatToChange = ( 'replace', \@ReplaceArray );
-            &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );
+            &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
         }
         else {
             &return_message( "WARN", "shell $params->{shell} is not vaild" );
@@ -1536,15 +1528,13 @@ sub modify_user {
         &return_message( "WARN",
             "Overriding sn,cn,description with $params->{description}" );
         undef @ReplaceArray;
-        undef @whatToChange;
         @ReplaceArray = ( 
             'sn', "$params->{description}",
             'cn', "$params->{description}",
             'description', "$params->{description}"
             );
 
-        @whatToChange = ( 'replace', \@ReplaceArray );
-        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", \@whatToChange );
+        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
     }    
 
     # check if we need to do any thing?
@@ -1603,7 +1593,6 @@ sub modify_group {
                     "An error occurred binding to the LDAP server: "
                       . ldap_error_text( $result->code ) );
             }
-
         }
         else {
             &return_message( "WARN", "gid ${gid} already exists" );
