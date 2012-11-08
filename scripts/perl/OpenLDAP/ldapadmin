@@ -1361,23 +1361,18 @@ sub delete_sudo_role {
     return 1;
 }
 
-###############
+################
 # LDAP_replace #
-###############
+################
 sub LDAP_modify {
-    my ($dn, $do, $whatToChange) = @_;
-     &return_message( "DEV", "\$whatToChange\n" . Dumper($whatToChange) );
-    # my $dn = "uid=${curr_user},${ou_users},${base}";
-    # my $result =
-    #   $ldap->modify( $dn,
-    #     changes => [ 'replace' => [ 'uidNumber' => "$params->{uid}" ] ] );
-    my $result = $ldap->modify ( $dn, changes => [ $do => [ @$whatToChange ] ] );
+    my ($dn, $do, $replaceArray) = @_;
+     &return_message( "DEV", "\$replaceArray\n" . Dumper($replaceArray) );
+    my $result = $ldap->modify ( $dn, changes => [ $do => [ @$replaceArray ] ] );
     if ( $result->code ) {
         &return_message( "FATAL",
             "An error occurred binding to the LDAP server: "
             . ldap_error_text( $result->code ) );
     }
-
     return $result;
 }
 
@@ -1400,7 +1395,8 @@ sub modify_user {
     my ( $curr_user, $params ) = @_;    
     my $skip = 0;
     my @whatToChange;
-    my @ReplaceArray;                 
+    my @ReplaceArray;
+    my $dn = "uid=${curr_user},${ou_users},${base}";
     &return_message( "DEV", "\$params\n" . Dumper($params) );
 
     # check old user exists
@@ -1442,14 +1438,13 @@ sub modify_user {
             if ( !&get_id_name( $ou_users, "uid", $params->{user} ) ) {
                 &return_message( "DEBUG", "Update of user name" );
                 my $result =
-                  $ldap->moddn( "uid=${curr_user},${ou_users},${base}", 
-                    newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
+                  $ldap->moddn( $dn, newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
                 if ( $result->code ) {
                     &return_message( "FATAL",
                         "An error occurred binding to the LDAP server: "
                           . ldap_error_text( $result->code ) );
                 } else {
-                    $curr_user = $params->{user};
+                    $dn = "uid=$params->{user}, ${ou_users}, ${base}";
                 }
             }
             else {
@@ -1476,7 +1471,7 @@ sub modify_user {
                 # update uid
                 undef @ReplaceArray;
                 @ReplaceArray = ( 'uidNumber', "$params->{uid}" );
-                &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
+                &LDAP_modify( $dn, 'replace', \@ReplaceArray );
             }
             else {
                 &return_message( "WARN", "uid $params->{uid} already exists" );
@@ -1498,7 +1493,7 @@ sub modify_user {
             
         undef @ReplaceArray;
         @ReplaceArray = ( 'homeDirectory', "$params->{home}" );
-        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
+        &LDAP_modify( $dn, 'replace', \@ReplaceArray );
     }
     
     ## modify shell
@@ -1510,7 +1505,7 @@ sub modify_user {
 
             undef @ReplaceArray;
             @ReplaceArray = ( 'loginShell', "$params->{shell}" );
-            &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
+            &LDAP_modify( $dn, 'replace', \@ReplaceArray );
         }
         else {
             &return_message( "WARN", "shell $params->{shell} is not vaild" );
@@ -1533,8 +1528,7 @@ sub modify_user {
             'cn', "$params->{description}",
             'description', "$params->{description}"
             );
-
-        &LDAP_modify( "uid=${curr_user},${ou_users},${base}", 'replace', \@whatToChange );
+        &LDAP_modify( $dn, 'replace', \@ReplaceArray );
     }    
 
     # check if we need to do any thing?
