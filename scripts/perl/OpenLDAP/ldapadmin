@@ -750,27 +750,60 @@ sub add_group_user {
     return 0;
 }
 
+#########################################################
+# Pre process the SSH key file to amend various options #
+#########################################################
+sub pre_process_ssh_key {
+    # Reads $HOME/.ssh/authorized_keys by default
+    my $file = shift;
+    my $akf = Net::SSH::AuthorizedKeysFile->new();
+
+    $akf->read($file);
+
+    # Iterate over entries
+    # for my $key ($akf->keys()) {
+    #     print $key->as_string(), "\n";
+    # }
+
+    # Modify entries:
+    for my $key ($akf->keys()) {
+        $key->option("no-port-forwarding", 1);
+        $key->option("no-x11-forwarding", 1);
+    }
+    # Save changes back to $HOME/.ssh/authorized_keys
+    $akf->save() or die "Cannot save";
+    return 0;   
+}
+
 ######################
 # Add SSH public key #
 ######################
 sub add_ssh_public_key {
     my ( $user, $file ) = @_;
-    my %hash           = &match_ssh_public_key( $user, $file );
-    my $match_count    = @{ $hash{match} };
-    my $no_match_count = @{ $hash{no_match} };
+    if (!&pre_process_ssh_key ($file)) {
 
-    #need to add the unmatched keys to LDAP
-    if ( $no_match_count > 0 ) {
-        my $dn = "uid=${user},${ou_users},${base}";
-        my $result = 
-        $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
-        if ( $result->code ) {
-            &return_message( "FATAL",
-                "An error occurred binding to the LDAP server: "
-                  . ldap_error_text( $result->code ) );
+        my %hash           = &match_ssh_public_key( $user, $file );
+        my $match_count    = @{ $hash{match} };
+        my $no_match_count = @{ $hash{no_match} };
+
+        # need to add the unmatched keys to LDAP
+        if ( $no_match_count > 0 ) {
+            my $dn = "uid=${user},${ou_users},${base}";
+            my $result = 
+            $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
+            if ( $result->code ) {
+                &return_message( "FATAL",
+                    "An error occurred binding to the LDAP server: "
+                      . ldap_error_text( $result->code ) );
+            }
+        } else {
+            print localtime()." INFO\tKey already exists\n";
         }
+        return 0;
+    } else { 
+        return 1; 
     }
-    return 0;
+    
 }
 
 ####################
@@ -2657,7 +2690,7 @@ sub check_actions {
             if ( $input_user && $input_ssh_key_file ) {
                 if ( !&add_ssh_public_key( $input_user, $input_ssh_key_file ) )
                 {
-                    &return_message( "SUCCESS", "SSH Keys added to LDAP" );
+                    &return_message( "SUCCESS", "SSH Key task completed" );
                     exit 0;
                 }
                 else {
