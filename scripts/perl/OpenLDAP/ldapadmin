@@ -758,27 +758,6 @@ sub add_ssh_public_key {
     my %hash           = &match_ssh_public_key( $user, $file );
     my $match_count    = @{ $hash{match} };
     my $no_match_count = @{ $hash{no_match} };
-    
-    # Commented out due to wrong code implementation 
-    # shouldn't be [ changes => [ add => [] ] ] but only [ add => [] 
-    # 
-    # my $do;
-    # if ( $match_count + $no_match_count == $no_match_count ) {
-    #     $do = 'replace';    
-    # }
-    # else {
-    #     $do = 'add';
-    # }
-
-    # my $dn = "uid=${user},${ou_users},${base}";
-    # my $result = $ldap->modify( $dn,
-    # changes => [ $do => [ 'sshPublicKey' => $hash{no_match} ] ] );
-    # if ( $result->code ) {
-    #     &return_message( "FATAL",
-    #         "An error occurred binding to the LDAP server: "
-    #           . ldap_error_text( $result->code ) );
-    # }
-    # print $do . "\n";    
 
     #need to add the unmatched keys to LDAP
     if ( $no_match_count > 0 ) {
@@ -2066,6 +2045,7 @@ sub show_ssh_public_keys {
         my @entry = $result->entries;
 
         my @keys      = $entry[0]->get_value('sshPublickey');
+
         my $key_count = @keys;
         if ( $key_count == 1 ) {
             if ( $keys[0] eq '' ) { $key_count = 0; }
