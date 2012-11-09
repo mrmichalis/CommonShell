@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<threadPool>
+  <sxmThreads>6</sxmThreads>
+  <ilvpThreads>1</ilvpThreads>
+  <sxmThreads>
+    <thread>
+      <threadPID>7001</threadPID>
+      <isRunning>false</isRunning>
+      <lastPinged>12-11-09 10:23:15</lastPinged>
+      <lastAction>12-11-09 10:23:15</lastAction>
+    </thread>
+    <thread>
+      <threadPID>7002</threadPID>
+      <isRunning>false</isRunning>
+      <lastPinged>12-11-09 10:22:37</lastPinged>
+      <lastAction>12-11-09 10:22:37</lastAction>
+    </thread>
+    <thread>
+      <threadPID>7003</threadPID>
+      <isRunning>true</isRunning>
+      <lastPinged>12-11-09 10:21:34</lastPinged>
+      <lastAction>12-11-09 10:21:34</lastAction>
+    </thread>
+    <thread>
+      <threadPID>7004</threadPID>
+      <isRunning>true</isRunning>
+      <lastPinged>12-11-09 10:23:31</lastPinged>
+      <lastAction>12-11-09 10:23:31</lastAction>
+    </thread>
+    <thread>
+      <threadPID>7005</threadPID>
+      <isRunning>true</isRunning>
+      <lastPinged>12-11-09 10:23:02</lastPinged>
+      <lastAction>12-11-09 10:23:02</lastAction>
+    </thread>
+    <thread>
+      <threadPID>7006</threadPID>
+      <isRunning>true</isRunning>
+      <lastPinged>12-11-09 10:23:18</lastPinged>
+      <lastAction>12-11-09 10:23:18</lastAction>
+    </thread>
+  </sxmThreads>
+  <ilvpThreads>
+    <thread>
+      <threadPID>0</threadPID>
+      <isRunning>false</isRunning>
+      <lastPinged>12-11-09 10:23:56</lastPinged>
+      <lastAction>12-11-09 10:23:29</lastAction>
+    </thread>
+  </ilvpThreads>
+</threadPool>
