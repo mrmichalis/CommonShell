@@ -1,4 +1,6 @@
 #!/usr/bin/perl -w
+# $Id: tpcheck.pl,v .8 2012/11/09 16:37:50 michalis Exp michalis $
+
 use strict;
 use XML::Twig;
 use LWP;
