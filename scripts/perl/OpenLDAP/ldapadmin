@@ -237,6 +237,8 @@ sub return_message {
 sub usage {
 
 print <<_END_;
+LDAP Access Control Version ${version}
+
 Usage: ${self} [options]
 
 Options:
