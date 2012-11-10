@@ -1353,6 +1353,8 @@ sub modify_user {
     # SEC-24:
     # Attributes that need to be able to be modified with moduser action are:
     # cn, sn, description (=sn=cn), gidNumber(notPossible), homeDirectory, loginShell, User Name (uid), uidNumber
+    
+    # TODO: USER GROUP, when renaming userid, modify the user in the group. 
 
     my ( $curr_user, $params ) = @_;    
     my $skip = 0;
