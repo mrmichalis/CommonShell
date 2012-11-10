@@ -242,7 +242,9 @@ LDAP Access Control Version ${version}
 Usage: ${self} [options]
 
 Options:
- -a, --action=<ACTION>    The Action to be performed.
+ -a, --action=[ACTION] The Action to be performed.
+
+ [ACTION] List:
       adduser
         Requried    --user=<s> --comment=<s>
         Optional    --uid=<i> --homedir=<s> --shell=<s>
