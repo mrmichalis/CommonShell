@@ -251,7 +251,8 @@ Options:
                     --defaultgid=<i> --password=<s>
       moduser
         Requried    --curruser=<s>
-        Optional    
+        Optional    --user=<i> --uid=<s> --description=<s>
+                    --homedir=<i> --shell=<s>        
       deluser
         Requried    --user=<s>
         Optional    --commit
@@ -3550,7 +3551,7 @@ Prints the manual page and exits.
 
 ldapadmin --action=adduser --user=testuser --comment="Test User"
 
-ldapadmin --action=adduser --user=testuser --comment="Test User" --uid=2345 --shell=bash --homedir=/home/testuser
+ldapadmin --action=adduser --user=testuser --comment="Test User" --uid=3456 --shell=bash --homedir=/home/testuser
 
 =item B<Add Group>
 
@@ -3568,31 +3569,37 @@ ldapadmin --action=addsshkey --user=testuser --sshfile=testuser.pub
 
 =item B<Add sudo role>
 
-ldapadmin --action addsudorole --sudorole %test
+ldapadmin --action=addsudorole --sudorole %test
 
 =item B<Add sudo command>
 
-ldapadmin --action addsudocmd --sudorole %test --sudocmd ALL
+ldapadmin --action=addsudocmd --sudorole %test --sudocmd ALL
 
 =item B<Modify User>
 
-ldapadmin --action=moduser --curruser=testuser --uid=4321
+ldapadmin --action=moduser --curruser=testuser --uid=3456
+
+ldapadmin --action=moduser --curruser=testuser --user=newtestuser
+
+ldapadmin --action=moduser --curruser=testuser --description="Test User"
+
+ldapadmin --action=moduser --curruser=testuser --shell=bash --homedir=/home/testuser
 
 =item B<Modify Group>
 
 ldapadmin --action=modgroup --oldgroup=testgroup --group=testgroup2
 
-ldapadmin --action=modgroup --oldgroup=testgroup --gid=5678
+ldapadmin --action=modgroup --oldgroup=testgroup --gid=3456
 
-ldapadmin --action=modgroup --oldgroup=testgroup --group=testgroup2 --gid=5678
+ldapadmin --action=modgroup --oldgroup=testgroup --group=testgroup2 --gid=3456
 
 =item B<Check User>
 
 ldapadmin --action=chkuser --user=testuser
 
-ldapadmin --action=chkuser --uid=2345
+ldapadmin --action=chkuser --uid=3456
 
-ldapadmin --action=chkuser --user=testuser --uid=2345
+ldapadmin --action=chkuser --user=testuser --uid=3456
 
 =item B<Check Group>
 
@@ -3608,11 +3615,11 @@ ldapadmin --action=chksshkey --user=testuser --sshfile=testuser.pub
 
 =item B<Check sudo role>
 
-ldapadmin --action chksudorole --sudorole %sysops
+ldapadmin --action=chksudorole --sudorole %sysops
 
 =item B<Check sudo command>
 
-ldapadmin --action chksudocmd --sudorole %sysops --sudocmd ALL
+ldapadmin --action=chksudocmd --sudorole %sysops --sudocmd ALL
 
 =item B<Delete User>
 
@@ -3650,19 +3657,19 @@ ldapadmin --action=delsshkey --user=testuser --sshfile=testuser.pub
 
 =item B<Delete sudo role>
 
-ldapadmin --action delsudorole --sudorole %test
+ldapadmin --action=delsudorole --sudorole %test
 
-ldapadmin --action delsudorole --sudorole %test --commit
+ldapadmin --action=delsudorole --sudorole %test --commit
 
 =item B<Delete sudo command>
 
-ldapadmin --action delsudocmd --sudorole %test --sudocmd ALL
+ldapadmin --action=delsudocmd --sudorole %test --sudocmd ALL
 
 =item B<Show User>
 
 ldapadmin --action=showuser --user=testuser
 
-ldapadmin --action=showuser --uid=2345
+ldapadmin --action=showuser --uid=3456
 
 =item B<Show Users>
 
@@ -3706,6 +3713,4 @@ L<perlpod>, L<perlpodspec>
 
 To Do:
 ## Posix
-Modify User                 --action=moduser
-`-> if user in a group, update groups
 ## SUDOers
