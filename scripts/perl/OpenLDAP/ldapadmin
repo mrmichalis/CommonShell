@@ -235,93 +235,99 @@ sub return_message {
 # show command line usage # In Progress!!
 ###########################
 sub usage {
+# TODO:
+# First option must be a mode specifier:
+#   -a Add  -m Modify  -s Show  -d Delete
+# ie: ldapadmin -a=user --user=<s> --comment=<s> ..
+# ie: ldapadmin -a=group --user=<s> --comment=<s> ..
+# ie: ldapadmin -a=sshkey --user=<s> --comment=<s> ..
+# ie: ldapadmin -a=sudorole --user=<s> --comment=<s> ..
+# ie: ldapadmin -a=sudocmd --user=<s> --comment=<s> ..
 
-print <<_END_;
+    print <<_END_;
 LDAP Access Control Version ${version}
 
-Usage: ${self} [options]
+Usage: ${self} --action=<ACTION>... [OPTION]...
 
-Options:
- -a, --action<ACTION...> The Action to be performed.
+ -a, --action=<ACTION...> The Action to be performed.
 
- <ACTION> List:
-      adduser
-        Requried    --user=<s> --comment=<s>
-        Optional    --uid=<i> --homedir=<s> --shell=<s>
-                    --defaultgid=<i> --password=<s>
-      moduser
-        Requried    --curruser=<s>
-        Optional    --user=<i> --uid=<s> --description=<s>
-                    --homedir=<i> --shell=<s>        
-      deluser
-        Requried    --user=<s>
-        Optional    --commit
-      chkuser
-        Required    --user=<s> and/or --uid=<i>
-      addgroupuser
-        Requried    --user=<s> --group=<s>
-      delgroupuser
-        Requried    --user=<s> --group=<s>
-      addgroup
-        Requried    --group=<s>
-        Optional    --gid=<i>
-      modgroup
-        Requried    --oldgroup=<s>
-        Requried    --group=<s> and/or --gid=<i>
-      delgroup
-        Requried    --group=<s>
-        Optional    --commit
-      chkgroup
-        Required    --group=<s> and/or --gid=<i>
-      showuser
-        Requried    --user=<s> or --uid=<i>
-      showusers
+<ACTION> list:
+  adduser       Add user
+    required:    --user=<s> --comment=<s>
+    optional:    --uid=<i> --homedir=<s> --shell=<s>
+                 --defaultgid=<i> --password=<s> 
+  moduser       Modify user
+    required:    --curruser=<s>
+    optional:    --user=<i> --uid=<s> --description=<s>
+                 --homedir=<i> --shell=<s>        
+  deluser       Delete user
+    required:    --user=<s>
+    optional:    --commit
+  chkuser       Check user
+    required:    --user=<s> and/or --uid=<i>
+  showuser      Show User Details
+    required:    --user=<s> or --uid=<i>
+  showusers     Show All Users 
+  addgroupuser  Add User to a group
+    required:    --user=<s> --group=<s>
+  delgroupuser  Delete a user from a group
+    required:    --user=<s> --group=<s>
+  addgroup      Add group
+    required:    --group=<s>
+    optional:    --gid=<i>
+  modgroup      Modify group
+    required:    --oldgroup=<s> --group=<s> and/or --gid=<i>  
+  delgroup      Delete group
+    required:    --group=<s>
+    opti:onal    --commit
+  chkgroup      Check group
+    required:    --group=<s> and/or --gid=<i>
+  showgroup     Show Group Details and Users
+    required:    --group=<s> or --gid=<i>
+  showgroups    Show all Groups
+  addsshkey     Add user's SSH Keys
+    required:    --user=<s> --sshfile=<s>
+  delsshkey     Delete user's SSH Keys
+    required:    --user=<s> --sshkey=<i> or --sshfile=<s>
+  showsshkeys   Show a users SSH Public Keys
+    required:    --user=<s>  
+  chksshkey     Check a users SSH Public Keys
+    required:    --user=<s> --sshfile=<s>
+  addsudorole   Add sudo role
+    required:    --sudorole=<s>
+  addsudocmd    Add sudo command to role
+    required:    --sudorole=<s> --sudocmd=<s>
+  chksudorole   Check sudo role exists
+    required:    --sudorole=<s>
+  chksudocmd    Check sudo command exists
+    required:    --sudorole=<s> --sudocmd=<s>
+  delsudorole   Delete sudo role
+    required:    --sudorole=<s>
+    optional:    --commit
+  delsudocmd    Delete sudo command
+    required:    --sudorole=<s> --sudocmd=<s>
 
-      showgroup
-        Requried    --group=<s> or --gid=<i>
-      showgroups
+Commands:
+ --loglevel=<LEVEL>  level is between 1-6, 1 being debug
+ -d, --debug         display debug messages
+ -h, --help          display this help message and exit
+ --man               display extened help and exit
+ -v, --version       display version
 
-      addsshkey
-        Requried    --user=<s> --sshfile=<s>
-      delsshkey
-        Requried    --user=<s>
-        Requried    --sshkey=<i> or --sshfile=<s>
-      showsshkeys
-        Required    --user=<s>
-      chksshkey
-        Required    --user=<s> --sshfile=<s>
-      addsudorole
-        Required    --sudorole=<s>
-      addsudocmd
-        Required    --sudorole=<s> --sudocmd=<s>
-      chksudorole
-        Required    --sudorole=<s>
-      chksudocmd
-        Required    --sudorole=<s> --sudocmd=<s>
-      delsudorole
-        Required    --sudorole=<s>
-        Optional    --commit
-      delsudocmd
-        Required    --sudorole=<s> --sudocmd=<s>
-
- --user=<USER>      Login user name
- --comment=COMMENT  GECOS field of the new account
- --homedir=HOME_DIR Home directory of new account
- --gid=GID          ID of the primary group of the new account
- --curruser=USER    Login of the current user name to update
- --group=GROUP      Name of the group
- --gid=GID          ID of the group
- --oldgroup=GROUP   Name of the group to update
- --sudorole=ROLE    SUDO role (USER or GROUP)
- --sudocmd=COMMAND  Commands which users can run using sudo
- --config=<FILE>    Config file
- --loglevel=<LEVEL> Level is between 1-6, 1 being debug
- -d --debug         Display debug messages
- -h, --help         Display this help message and exit
- --man              Display extened help and exit
- -v, --version      Display version
+Common Options:
+ --user=<USER>       login user name
+ --comment="COMMENT" GECOS field of the new account
+ --homedir=HOME_DIR  home directory of new account
+ --gid=<GID>         id of the primary group of the new account
+ --curruser=<USER>   login of the current user name to update
+ --group=<GROUP>     name of the group
+ --gid=<GID>         id of the group
+ --oldgroup=<GROUP>  name of the group to update
+ --sudorole=<ROLE>   SUDO role (USER or GROUP)
+ --sudocmd=<COMMAND> commands which users can run using sudo
+ --config=<FILE>     config file
 _END_
-exit;
+    exit;
 }
 
 ############
@@ -1353,8 +1359,6 @@ sub modify_user {
     # SEC-24:
     # Attributes that need to be able to be modified with moduser action are:
     # cn, sn, description (=sn=cn), gidNumber(notPossible), homeDirectory, loginShell, User Name (uid), uidNumber
-    
-    # TODO: USER GROUP, when renaming userid, modify the user in the group. 
 
     my ( $curr_user, $params ) = @_;    
     my $skip = 0;
