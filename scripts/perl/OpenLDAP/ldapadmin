@@ -164,7 +164,7 @@ my $log_level;             # --loglevel=<i>
 my $debug;                 # --debug || -d
 my $devdebug;              # --devdebug || -dd
 
-my $help;                  # --help || -?
+my $help;                  # --help || -h
 my $man;                   # --man || --doc
 my $show_version;          # --version || -v
 my $action;                # --action=<s>
@@ -175,7 +175,7 @@ my $input_config;          # --config=<s>
 pod2usage( -exitval => 2, -input => $0 ) if ( ( @ARGV == 0 ) && ( -t STDIN ) );
 
 GetOptions(
-    "help|?"                => \$help,
+    "help|h"                => \$help,
     "man|perldoc|doc"       => \$man,
     "action|a=s"            => \$action,
     "user|u=s"              => \$input_user,
@@ -237,12 +237,14 @@ sub return_message {
 sub usage {
 # TODO:
 # First option must be a mode specifier:
-#   -a Add  -m Modify  -s Show  -d Delete
-# ie: ldapadmin -a=user --user=<s> --comment=<s> ..
-# ie: ldapadmin -a=group --user=<s> --comment=<s> ..
-# ie: ldapadmin -a=sshkey --user=<s> --comment=<s> ..
-# ie: ldapadmin -a=sudorole --user=<s> --comment=<s> ..
-# ie: ldapadmin -a=sudocmd --user=<s> --comment=<s> ..
+#   --add Add  --modify Modify  --show Show  --delete Delete
+#    -a         -m               -s           -d 
+#
+# ie: ldapadmin -add=user --user=<s> --comment=<s> ..
+# ie: ldapadmin -add=group --user=<s> --comment=<s> ..
+# ie: ldapadmin -add=sshkey --user=<s> --comment=<s> ..
+# ie: ldapadmin -add=sudorole --user=<s> --comment=<s> ..
+# ie: ldapadmin -add=sudocmd --user=<s> --comment=<s> ..
 
     print <<_END_;
 LDAP Access Control Version ${version}
