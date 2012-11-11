@@ -33,7 +33,7 @@ sub process {
 # write to a log file
 sub log {
 	my $message = shift;
-    my $now     = localtime;
+    	my $now     = localtime;
 	my $logmsg 	= "$now ERROR\t$message";
 	open LOGFILE, ">>$logfile" or die "cannot open logfile $logfile for append: $!";
 	print LOGFILE $logmsg;
