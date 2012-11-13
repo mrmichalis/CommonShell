@@ -235,23 +235,23 @@ sub return_message {
 # show command line usage # In Progress!!
 ###########################
 sub usage {
-# TODO:
+# TODO: future work
 # First option must be a mode specifier:
 #   --add Add  --modify Modify  --show Show  --delete Delete
 #    -a         -m               -s           -d 
 #
 # ie: ldapadmin -add=user --user=<s> --comment=<s> ..
-# ie: ldapadmin -add=group --user=<s> --comment=<s> ..
-# ie: ldapadmin -add=sshkey --user=<s> --comment=<s> ..
-# ie: ldapadmin -add=sudorole --user=<s> --comment=<s> ..
-# ie: ldapadmin -add=sudocmd --user=<s> --comment=<s> ..
+#     ldapadmin -add=group --user=<s> --comment=<s> ..
+#     ldapadmin -add=sshkey --user=<s> --comment=<s> ..
+#     ldapadmin -add=sudorole --user=<s> --comment=<s> ..
+#     ldapadmin -add=sudocmd --user=<s> --comment=<s> ..
 
     print <<_END_;
 LDAP Access Control Version ${version}
 
-Usage: ${self} --action=<ACTION>... [OPTION]...
+Usage: ${self} --action=<ACTION> [OPTION...]
 
- -a, --action=<ACTION...> The Action to be performed.
+ -a, --action=<ACTION> The Action to be performed.
 
 <ACTION> list:
   adduser       Add user
@@ -686,26 +686,35 @@ sub add_group_user {
             "An error occurred binding to the LDAP server: "
               . ldap_error_text( $result->code ) );
     }
-    my $entries = $result->entries;
 
-    if ( $entries > 0 ) {
-        &return_message( "INFO", "${user} already in the group ${group}" );
+    # populate User's group
+    my @membercn;
+    for my $e ($result->entries)
+    {
+        #$e->dump;
+        &return_message( "INFO", "${user} is a member of ".$e->get_value("cn")." group" );
+        push @membercn, $e->get_value("cn"); 
+    }
+    my %params = map { $_ => 1 } @membercn;
+    
+    if(exists($params{$group})) { 
+        &return_message( "ERROR", "${user} already in the group ${group}" );
+        return 1;
+    } else {
+        # Add user to the group
+        &return_message( "DEBUG", "Adding ${user} to ${group}" );
+
+        my $dn = "cn=${group},${ou_groups},${base}";
+        $result =
+          $ldap->modify( $dn, 'add' => [ 'memberUid' => ${user} ] );
+        if ( $result->code ) {
+            &return_message( "FATAL",
+                "An error occurred binding to the LDAP server: "
+                  . ldap_error_text( $result->code ) );
+        }
         return 0;
     }
 
-    # Add user to the group
-    &return_message( "DEBUG", "Adding ${user} to ${group}" );
-
-    my $dn = "cn=${group},${ou_groups},${base}";
-    $result =
-      $ldap->modify( $dn, changes => [ 'add' => [ 'memberUid' => ${user} ] ] );
-    if ( $result->code ) {
-        &return_message( "FATAL",
-            "An error occurred binding to the LDAP server: "
-              . ldap_error_text( $result->code ) );
-    }
-
-    return 0;
 }
 
 #########################################################
@@ -1105,9 +1114,9 @@ sub delete_group_user {
     # Check user exists in LDAP
     # User names will still be added to a group if they dont exist in LDAP
     # as SUDOers will use the group to check rules.
-    if ( !&get_id_name( $ou_users, "uid", $user ) ) {
-        &return_message( "WARN", "User ${user} does not exist in LDAP" );
-    }
+    # if ( !&get_id_name( $ou_users, "uid", $user ) ) {
+    #     &return_message( "WARN", "User ${user} does not exist in LDAP" );
+    # }
 
     # Check group exists
     if ( !&get_id_name( $ou_groups, "cn", $group ) ) {
@@ -1378,8 +1387,9 @@ sub modify_user {
     }
     &return_message( "DEBUG", "${old_uid} exists" );
 
-    # check that the new user name is not reserved
+ 
     if ( $params->{user} ) {
+       # check that the new user name is not reserved
         if ( grep /^$params->{user}$/, @reserved_users ) {
             &return_message( "WARN",
                 "$params->{user} is reserved please choose a different user name" );
@@ -1406,6 +1416,7 @@ sub modify_user {
 
             # check new user does not exist
             if ( !&get_id_name( $ou_users, "uid", $params->{user} ) ) {
+                # modify the user with new user name
                 &return_message( "DEBUG", "Update of user name" );
                 my $result =
                   $ldap->moddn( $dn, newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
@@ -1416,6 +1427,46 @@ sub modify_user {
                 } else {
                     $dn = "uid=$params->{user}, ${ou_users}, ${base}";
                 }
+
+                # update of user group
+                &return_message( "DEBUG", "Update of user group" );
+                my $filter = "(&(objectClass=posixGroup)(memberUid=${curr_user}))";
+                &return_message( "DEBUG", "Base: ${ou_groups},${base}" );
+                &return_message( "DEBUG", "Search filter: ${filter}" );
+                my $gsearchresult = $ldap->search(
+                    base   => "${ou_groups},${base}",
+                    filter => "${filter}",
+                    scope  => "one"
+                );
+                if ( $gsearchresult->code ) {
+                    &return_message( "FATAL",
+                        "An error occurred binding to the LDAP server: "
+                          . ldap_error_text( $gsearchresult->code ) );
+                }
+                my $gentries = $gsearchresult->entries;                
+                &return_message( "DEBUG", "Results Returned: $gentries" );
+                if ( $gentries == 0 ) {
+                    &return_message( "DEBUG", "No results returned WTF!" );
+                    return 1;
+                }
+                else {
+                    print "\n";
+                    print "  Group\t\t\tGID\n";
+                    print "  ===========================\n";
+                    my $i = 1;
+                    foreach my $gentry ( $gsearchresult->entries ) {
+
+                        # prepare list of groups for sudoers check
+                        #$sudo_groups[$i] = "%" . $gentry->get_value('cn');
+                        print "  "
+                          . $gentry->get_value('cn') . "\t\t"
+                          . $gentry->get_value('gidNumber') . "\n";
+                        &delete_group_user( $curr_user, $gentry->get_value('cn') );
+                        &add_group_user( $params->{user}, $gentry->get_value('cn') );
+                        $i++;
+                    }
+                    print "\n";
+                } 
             }
             else {
                 &return_message( "WARN", "User $params->{user} already exists" );
@@ -1734,7 +1785,6 @@ sub show_user {
             }
             print "\n";
         }
-
         # show which sudo groups the user is in
         my $gcount = @sudo_groups;
         if ( $gcount > 0 ) {
