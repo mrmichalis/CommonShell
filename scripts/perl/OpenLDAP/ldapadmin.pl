@@ -53,7 +53,7 @@ my $hostname      = "localhost";
 my $port          = "389";
 my $show_password = "no";
 my $default_shell = "bash";
-my $uri       = "ldapi:///";
+my $uri           = "ldapi:///";
 
 # the default system group to put users into.
 # this group does not exist in ldap!
@@ -79,7 +79,7 @@ my @config_locations =
 
 my $ldap;
 my $program       = "ldapadmin";
-my $version       = 1.9;
+my $version       = "1.9.1";
 my $message_level = 4;
 my $self          = &get_me;
 
@@ -175,7 +175,7 @@ my $input_config;          # --config=<s>
 # display mini help if no arguments given
 pod2usage( -exitval => 2, -input => $0 ) if ( ( @ARGV == 0 ) && ( -t STDIN ) );
 
-GetOptions(
+Getopt::Long::GetOptions(
     "help|h"                => \$help,
     "man|perldoc|doc"       => \$man,
     "action|a=s"            => \$action,
@@ -220,15 +220,12 @@ sub return_message {
     my $level   = shift;
     my $message = shift;
     my $now     = localtime;
-    my $test_level;
-    $test_level = "1" if $level eq "DEV";
-    $test_level = "2" if $level eq "DEBUG";
-    $test_level = "3" if $level eq "INFO";
-    $test_level = "4" if $level eq "SUCCESS";
-    $test_level = "5" if $level eq "WARN";
-    $test_level = "6" if $level eq "ERROR";
-    $test_level = "7" if $level eq "FATAL";
-    if ( $message_level <= $test_level ) { print "$now $level $message\n"; }
+    my %test_level = ( 
+        DEV     => 1, DEBUG => 2,  INFO => 3, 
+        SUCCESS => 4, WARN  => 5, ERROR => 6, 
+        FATAL   => 7  
+        );
+    if ( $message_level <= $test_level{$level} ) { print "$now $level $message\n"; }
     if ( $level eq "FATAL" ) { exit(1); }
 }
 
@@ -238,8 +235,8 @@ sub return_message {
 sub usage {
 # TODO: future work
 # First option must be a mode specifier:
-#   --add Add  --modify Modify  --show Show  --delete Delete
-#    -a         -m               -s           -d 
+#   --add Add  --modify Modify  --show Show  --delete Delete  --check Check
+#    -a         -m               -s           -d              -c
 #
 # ie: ldapadmin -add=user --user=<s> --comment=<s> ..
 #     ldapadmin -add=group --user=<s> --comment=<s> ..
