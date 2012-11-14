@@ -118,12 +118,13 @@ my @reserved_users = (
 );
 
 # list of shells which users can use, and there locations
-my %shells;
-$shells{"bash"}    = "/bin/bash";
-$shells{"csh"}     = "/bin/csh";
-$shells{"ksh"}     = "/bin/ksh";
-$shells{"sh"}      = "/bin/sh";
-$shells{"nologin"} = "/sbin/nologin";
+my %shells = (
+    bash    => "/bin/bash",
+    csh     => "/bin/csh",
+    ksh     => "/bin/ksh",
+    sh      => "/bin/sh",
+    nologin => "/sbin/nologin"
+);
 
 # as standard group is not in LDAP we need to manually put this in the array.
 my @sudo_groups = ("%${standard_group}");
@@ -1032,7 +1033,7 @@ sub change_user_status {
         $pwdLockout = "TRUE";
 
         # set the users shell to login to disable server access
-        $shell = "/sbin/nologin";
+        $shell = $shells{nologin};
     }
     elsif ( $status eq "unlock" ) {
         $pwdLockout = "FALSE";
