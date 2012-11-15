@@ -130,19 +130,56 @@ my %shells = (
 my @sudo_groups = ("%${standard_group}");
 
 # variables which will be allowed --action=<variable>
-my @actions = (
-    "addgroup",   "addgroupuser",      "adduser",      "addsshkey",
-    "chkid",      "chkgroup",          "chkname",      "chkuser",
-    "deluser",    "delgroup",          "delgroupuser", "modgroup",
-    "moduser",    "showuser",          "showgroup",    "showgroups",
-    "showusers",  "showdisabledusers", "showsshkeys",  "delsshkey",
-    "chksshkey",  "addsudorole",       "addsudocmd",   "delsudorole",
-    "delsudocmd", "modsudorole",       "chksudorole",  "chksudocmd",
-    "purgeuser",  "userstatus",        "rmuser",       "recoveruser",
-    "purgeusers"
+# my @actions = (
+#     "addgroup",   "addgroupuser",      "adduser",      "addsshkey",
+#     "chkid",      "chkgroup",          "chkname",      "chkuser",
+#     "deluser",    "delgroup",          "delgroupuser", "modgroup",
+#     "moduser",    "showuser",          "showgroup",    "showgroups",
+#     "showusers",  "showdisabledusers", "showsshkeys",  "delsshkey",
+#     "chksshkey",  "addsudorole",       "addsudocmd",   "delsudorole",
+#     "delsudocmd", "modsudorole",       "chksudorole",  "chksudocmd",
+#     "purgeuser",  "userstatus",        "rmuser",       "recoveruser",
+#     "purgeusers"
+# );
+
+# my @opt_add    = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
+# my @opt_check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );
+# my @opt_delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
+# my @opt_modify = ( "user", "group", "sudorole" );
+# my @opt_show   = ( "user", "group" );
+# my @opt_list   = ( "users", "groups", "sshkeys", "disabledusers", "userstatus" );
+
+my @actions = (   
+    #add
+    "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"    
+    #check
+    "user", "group", "sshkey", "sudorole", "sudocmd",              "uid", "name", 
+    #del
+    "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser",
+    #modify
+    "user", "group",           "sudorole",
+    #show
+    "user", "group", 
+    #show --ALL
+    "users", "groups", "sshkeys", "disabledusers", "userstatus",
+    #other
+    "recoveruser"
 );
 
+# ie: ldapadmin -add=user --user=<s> --comment=<s> ..
+#     ldapadmin -add=group --user=<s> --comment=<s> ..
+#     ldapadmin -add=sshkey --user=<s> --comment=<s> ..
+#     ldapadmin -add=sudorole --user=<s> --comment=<s> ..
+#     ldapadmin -add=sudocmd --user=<s> --comment=<s> ..
+
+
 ## command line switches
+my $action_add;
+my $action_modify;
+my $action_delete;
+my $action_show;
+my $action_check;
+
 my $input_user;            # --user=<s>
 my $input_curr_user;       # --curruser=<s>
 my $input_uid;             # --uid=<i>
@@ -172,6 +209,8 @@ my $action;                # --action=<s>
 my $commit;                # --commit
 my $input_config;          # --config=<s>
 
+
+
 # display mini help if no arguments given
 pod2usage( -exitval => 2, -input => $0 ) if ( ( @ARGV == 0 ) && ( -t STDIN ) );
 
@@ -199,7 +238,12 @@ Getopt::Long::GetOptions(
     "devdebug|dd"           => \$devdebug,
     "version"               => \$show_version,
     "commit"                => \$commit,
-    "config=s"              => \$input_config
+    "config=s"              => \$input_config,
+    "add=s"                 => \$action_add,
+    "modify=s"              => \$action_modify,
+    "delete=s"              => \$action_delete,
+    "show=s"                => \$action_show,
+    "check=s"               => \$action_check
 );
 
 ##################################
@@ -211,6 +255,13 @@ sub get_me {
     my $count = @bits;
     $count--;
     return $bits[$count];
+}
+
+# de(value):
+# Return 1 if value defined and is non-zero, 0 otherwise.
+sub de($) {
+  my ($value) = @_;
+  return defined $value && $value ? 1 : 0;
 }
 
 ####################################
@@ -817,7 +868,7 @@ sub add_sudo_role {
             'cn'            => $sudo_role,
             'sudoUser'      => $sudo_role,
             'sudoHost'      => 'ALL',
-            'sudoCommand'   => 'ALL',            
+            'sudoCommand'   => 'ALL',
             'sudoOption'    => '!authenticate',
             'sudoRunAsUser' => 'ALL',
             'objectclass'   => [ 'top', 'sudoRole' ]
@@ -2587,10 +2638,89 @@ sub load_config_variables {
     return 0;
 }
 
+
+
+sub check_actions {
+
+    if (de($action_add)
+      + de($action_modify)
+      + de($action_delete)
+      + de($action_show)
+      + de($action_check) > 1) {
+    die "only one command may be specified\n"; #OK
+    }
+
+    my $mode;
+
+    $mode = 'add'    if ($action_add);
+    $mode = 'modify' if ($action_modify);
+    $mode = 'delete' if ($action_delete);
+    $mode = 'show'   if ($action_show);
+    $mode = 'check'  if ($action_check);   
+
+    if ( de($action_add) ){        
+        given ($action_add){
+            when("user"){
+                if ( $input_user && $input_description ) {
+                    # lets save a lot of shift'ing in the add_user routine and use a hash.
+                    my $details;
+                    $details->{"user"}        = $input_user;
+                    $details->{"uid"}         = $input_uid;
+                    $details->{"gid"}         = $input_default_gid;
+                    $details->{"description"} = $input_description;
+                    $details->{"home"}        = $input_homedir;
+                    $details->{"shell"}       = $input_shell;
+                    $details->{"pass"}        = $input_passwd;
+                    my $result = &add_user($details);
+
+                    if ( $result == 0 ) {
+                        my $uid = &get_id_name( $ou_users, "uid", $input_user );
+
+                        # return 0 - created
+                        &return_message( "SUCCESS",
+                            "User created ${input_user}:${uid}" );
+                    }
+                    elsif ( $result == 1 ) {
+
+                        # return 1 - failed
+                        &return_message( "ERROR", "Can not create ${input_user}" );
+                    }
+                    elsif ( $result == 2 ) {
+                        my $uid = &get_id_name( $ou_users, "uid", $input_user );
+
+                        # return 2 - already exists :)
+                        &return_message( "SUCCESS",
+                            "User exists ${input_user}:${uid}" );
+                    }
+                }
+                else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> --description=\"<description>\""
+                    );
+                }
+            }
+            default { 
+                &return_message( "DEBUG", "No Action has been defined" );
+                &usage; 
+            }
+        }
+
+    } 
+    elsif ( de($action_modify) ){
+    }
+    elsif ( de($action_delete) ){
+    }
+    elsif ( de($action_show) ){
+    }
+    elsif ( de($action_check) ){
+    }
+
+
+}
+
 ############################
 # check what we need to do #
 ############################
-sub check_actions {
+sub ccheck_actions {
 
     # we are using given/when which is perl 5.10> core module
 
@@ -3413,10 +3543,10 @@ if ( $result->code ) {
           . ldap_error_text( $result->code ) );
 }
 
-if ( !$action ) {
-    return_message( "DEBUG", "No Action has been defined" );
-    &usage;
-}
+# if ( !$action ) {
+#     return_message( "DEBUG", "No Action has been defined" );
+#     &usage;
+# }
 
 if ( grep /^[Yy][Ee][Ss]$/, $auto_commit ) {
     $commit = 1;
