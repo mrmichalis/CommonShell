@@ -129,56 +129,12 @@ my %shells = (
 # as standard group is not in LDAP we need to manually put this in the array.
 my @sudo_groups = ("%${standard_group}");
 
-# variables which will be allowed --action=<variable>
-# my @actions = (
-#     "addgroup",   "addgroupuser",      "adduser",      "addsshkey",
-#     "chkid",      "chkgroup",          "chkname",      "chkuser",
-#     "deluser",    "delgroup",          "delgroupuser", "modgroup",
-#     "moduser",    "showuser",          "showgroup",    "showgroups",
-#     "showusers",  "showdisabledusers", "showsshkeys",  "delsshkey",
-#     "chksshkey",  "addsudorole",       "addsudocmd",   "delsudorole",
-#     "delsudocmd", "modsudorole",       "chksudorole",  "chksudocmd",
-#     "purgeuser",  "userstatus",        "rmuser",       "recoveruser",
-#     "purgeusers"
-# );
-
-# my @opt_add    = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
-# my @opt_check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );
-# my @opt_delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
-# my @opt_modify = ( "user", "group", "sudorole" );
-# my @opt_show   = ( "user", "group" );
-# my @opt_list   = ( "users", "groups", "sshkeys", "disabledusers", "userstatus" );
-
-my @actions = (   
-    #add
-    "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"    
-    #check
-    "user", "group", "sshkey", "sudorole", "sudocmd",              "uid", "name", 
-    #del
-    "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser",
-    #modify
-    "user", "group",           "sudorole",
-    #show
-    "user", "group", 
-    #show --ALL
-    "users", "groups", "sshkeys", "disabledusers", "userstatus",
-    #other
-    "recoveruser"
-);
-
-# ie: ldapadmin -add=user --user=<s> --comment=<s> ..
-#     ldapadmin -add=group --user=<s> --comment=<s> ..
-#     ldapadmin -add=sshkey --user=<s> --comment=<s> ..
-#     ldapadmin -add=sudorole --user=<s> --comment=<s> ..
-#     ldapadmin -add=sudocmd --user=<s> --comment=<s> ..
-
-
 ## command line switches
-my $action_add;
-my $action_modify;
-my $action_delete;
-my $action_show;
-my $action_check;
+my $action_add;             # --add=<s>     || -a=<s>
+my $action_modify;          # --modify=<s>  || -m=<s>
+my $action_delete;          # --delete=<s>  || -d=<s>
+my $action_list;            # --list=<s>    || -l=<s>
+my $action_check;           # --check=<s>   || -c=<s>
 
 my $input_user;            # --user=<s>
 my $input_curr_user;       # --curruser=<s>
@@ -199,13 +155,12 @@ my $output;                # --output=csv
 my $output_filename;       # --outputfile=<s>
 
 my $log_level;             # --loglevel=<i>
-my $debug;                 # --debug || -d
+my $debug;                 # --debug
 my $devdebug;              # --devdebug || -dd
 
 my $help;                  # --help || -h
 my $man;                   # --man || --doc
 my $show_version;          # --version || -v
-my $action;                # --action=<s>
 my $commit;                # --commit
 my $input_config;          # --config=<s>
 
@@ -217,7 +172,6 @@ pod2usage( -exitval => 2, -input => $0 ) if ( ( @ARGV == 0 ) && ( -t STDIN ) );
 Getopt::Long::GetOptions(
     "help|h"                => \$help,
     "man|perldoc|doc"       => \$man,
-    "action|a=s"            => \$action,
     "user|u=s"              => \$input_user,
     "curruser=s"            => \$input_curr_user,
     "uid=i"                 => \$input_uid,
@@ -234,16 +188,17 @@ Getopt::Long::GetOptions(
     "sudorole=s"            => \$input_sudo_role,
     "sudocmd=s"             => \$input_sudo_command,
     "loglevel=i"            => \$log_level,
-    "debug|d"               => \$debug,
+    "debug"                 => \$debug,
     "devdebug|dd"           => \$devdebug,
     "version"               => \$show_version,
     "commit"                => \$commit,
     "config=s"              => \$input_config,
-    "add=s"                 => \$action_add,
-    "modify=s"              => \$action_modify,
-    "delete=s"              => \$action_delete,
-    "show=s"                => \$action_show,
-    "check=s"               => \$action_check
+
+    "add|a=s"               => \$action_add,
+    "check|c=s"             => \$action_check,
+    "delete|d=s"            => \$action_delete,
+    "modify|m=s"            => \$action_modify,
+    "list|l=s"              => \$action_list
 );
 
 ##################################
@@ -298,87 +253,93 @@ sub usage {
     print <<_END_;
 LDAP Access Control Version ${version}
 
-Usage: ${self} --action=<ACTION> [OPTION...]
+Usage: ${self} [ACTION] [OPTION...]
+First option must be a mode specifier:
 
- -a, --action=<ACTION> The Action to be performed.
-
-<ACTION> list:
-  adduser       Add user
-    required:    --user=<s> --comment=<s>
-    optional:    --uid=<i> --homedir=<s> --shell=<s>
-                 --defaultgid=<i> --password=<s> 
-  moduser       Modify user
-    required:    --curruser=<s>
-    optional:    --user=<i> --uid=<s> --description=<s>
-                 --homedir=<i> --shell=<s>        
-  deluser       Delete user
-    required:    --user=<s>
-    optional:    --commit
-  chkuser       Check user
-    required:    --user=<s> and/or --uid=<i>
-  showuser      Show User Details
-    required:    --user=<s> or --uid=<i>
-  showusers     Show All Users 
-  addgroupuser  Add User to a group
-    required:    --user=<s> --group=<s>
-  delgroupuser  Delete a user from a group
-    required:    --user=<s> --group=<s>
-  addgroup      Add group
-    required:    --group=<s>
-    optional:    --gid=<i>
-  modgroup      Modify group
-    required:    --oldgroup=<s> --group=<s> and/or --gid=<i>  
-  delgroup      Delete group
-    required:    --group=<s>
-    opti:onal    --commit
-  chkgroup      Check group
-    required:    --group=<s> and/or --gid=<i>
-  showgroup     Show Group Details and Users
-    required:    --group=<s> or --gid=<i>
-  showgroups    Show all Groups
-  addsshkey     Add user's SSH Keys
-    required:    --user=<s> --sshfile=<s>
-  delsshkey     Delete user's SSH Keys
-    required:    --user=<s> --sshkey=<i> or --sshfile=<s>
-  showsshkeys   Show a users SSH Public Keys
-    required:    --user=<s>  
-  chksshkey     Check a users SSH Public Keys
-    required:    --user=<s> --sshfile=<s>
-  addsudorole   Add sudo role
-    required:    --sudorole=<s>
-  addsudocmd    Add sudo command to role
-    required:    --sudorole=<s> --sudocmd=<s>
-  chksudorole   Check sudo role exists
-    required:    --sudorole=<s>
-  chksudocmd    Check sudo command exists
-    required:    --sudorole=<s> --sudocmd=<s>
-  delsudorole   Delete sudo role
-    required:    --sudorole=<s>
-    optional:    --commit
-  delsudocmd    Delete sudo command
-    required:    --sudorole=<s> --sudocmd=<s>
-
-Commands:
- --loglevel=<LEVEL>  level is between 1-6, 1 being debug
- -d, --debug         display debug messages
- -h, --help          display this help message and exit
- --man               display extened help and exit
- -v, --version       display version
+Actions:
+     -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
+     -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+     -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"]
+     -m, --modify            modify ["user", "group", "sudorole"]
+     -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+     -h, --help              display this help and exit
+         --man               display man page
+         --debug             increase verbosity level by one
+         --loglevel=<LEVEL>  level is between 1-6, 1 being debug
+         --version           output version information and exit
 
 Common Options:
- --user=<USER>       login user name
- --comment="COMMENT" GECOS field of the new account
- --homedir=HOME_DIR  home directory of new account
- --gid=<GID>         id of the primary group of the new account
- --curruser=<USER>   login of the current user name to update
- --group=<GROUP>     name of the group
- --gid=<GID>         id of the group
- --oldgroup=<GROUP>  name of the group to update
- --sudorole=<ROLE>   SUDO role (USER or GROUP)
- --sudocmd=<COMMAND> commands which users can run using sudo
- --config=<FILE>     config file
+     --user=<USER>       login user name
+     --comment="COMMENT" GECOS field of the new account
+     --homedir=HOME_DIR  home directory of new account
+     --gid=<GID>         id of the primary group of the new account
+     --curruser=<USER>   login of the current user name to update
+     --group=<GROUP>     name of the group
+     --gid=<GID>         id of the group
+     --oldgroup=<GROUP>  name of the group to update
+     --sudorole=<ROLE>   SUDO role (USER or GROUP)
+     --sudocmd=<COMMAND> commands which users can run using sudo
+     --config=<FILE>     config file
+
+Examples:
+
+  :Add user
+   ${self} -a user --user=<s> --comment=<s> [ --uid=<i> --homedir=<s> --shell=<s> --defaultgid=<i> --password=<s> ]
+  
+  :Check user
+   ${self} -c user --user=<s> [ --uid=<i> ]
+  
+  :Delete user
+   ${self} -d user --user=<s> [ --commit ]
+  
+  :Modify user
+   ${self} -m user --curruser=<s> --user=<i> [ --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+  
+  :List user
+   ${self} -l user --user=<s> --user=<i> [ --uid=<s> ]
+
 _END_
     exit;
+
+# showusers     Show All Users 
+# addgroupuser  Add User to a group
+#   required:    --user=<s> --group=<s>
+# delgroupuser  Delete a user from a group
+#   required:    --user=<s> --group=<s>
+# addgroup      Add group
+#   required:    --group=<s>
+#   optional:    --gid=<i>
+# modgroup      Modify group
+#   required:    --oldgroup=<s> --group=<s> and/or --gid=<i>  
+# delgroup      Delete group
+#   required:    --group=<s>
+#   opti:onal    --commit
+# chkgroup      Check group
+#   required:    --group=<s> and/or --gid=<i>
+# showgroup     Show Group Details and Users
+#   required:    --group=<s> or --gid=<i>
+# showgroups    Show all Groups
+# addsshkey     Add user's SSH Keys
+#   required:    --user=<s> --sshfile=<s>
+# delsshkey     Delete user's SSH Keys
+#   required:    --user=<s> --sshkey=<i> or --sshfile=<s>
+# showsshkeys   Show a users SSH Public Keys
+#   required:    --user=<s>  
+# chksshkey     Check a users SSH Public Keys
+#   required:    --user=<s> --sshfile=<s>
+# addsudorole   Add sudo role
+#   required:    --sudorole=<s>
+# addsudocmd    Add sudo command to role
+#   required:    --sudorole=<s> --sudocmd=<s>
+# chksudorole   Check sudo role exists
+#   required:    --sudorole=<s>
+# chksudocmd    Check sudo command exists
+#   required:    --sudorole=<s> --sudocmd=<s>
+# delsudorole   Delete sudo role
+#   required:    --sudorole=<s>
+#   optional:    --commit
+# delsudocmd    Delete sudo command
+#   required:    --sudorole=<s> --sudocmd=<s>    
 }
 
 ############
@@ -594,8 +555,7 @@ sub add_group {
 
     # check that the group name is not reserved
     if ( grep /^${group}$/, @reserved_groups ) {
-        &return_message( "WARN",
-            "${group} is reserved please choose a different group name" );
+        &return_message( "WARN", "${group} is reserved please choose a different group name" );
         return 1;
     }
 
@@ -2638,29 +2598,31 @@ sub load_config_variables {
     return 0;
 }
 
-
+# my @add    = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
+# my @check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );
+# my @delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
+# my @modify = ( "user", "group", "sudorole" );
+# my @list   = ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
 
 sub check_actions {
-
     if (de($action_add)
-      + de($action_modify)
+      + de($action_check)
       + de($action_delete)
-      + de($action_show)
-      + de($action_check) > 1) {
+      + de($action_modify)
+      + de($action_list) > 1) {
     die "only one command may be specified\n"; #OK
     }
+    # my $mode;
+    # $mode = 'add'    if ($action_add);      # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" 
+    # $mode = 'check'  if ($action_check);    # "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"
+    # $mode = 'delete' if ($action_delete);   # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"
+    # $mode = 'modify' if ($action_modify);   # "user", "group", "sudorole"
+    # $mode = 'list'   if ($action_list);     # "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"
 
-    my $mode;
-
-    $mode = 'add'    if ($action_add);
-    $mode = 'modify' if ($action_modify);
-    $mode = 'delete' if ($action_delete);
-    $mode = 'show'   if ($action_show);
-    $mode = 'check'  if ($action_check);   
-
-    if ( de($action_add) ){        
-        given ($action_add){
-            when("user"){
+    if ( de($action_add) ) {
+        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
+        given ($action_add) {
+            when("user") {
                 if ( $input_user && $input_description ) {
                     # lets save a lot of shift'ing in the add_user routine and use a hash.
                     my $details;
@@ -2672,823 +2634,552 @@ sub check_actions {
                     $details->{"shell"}       = $input_shell;
                     $details->{"pass"}        = $input_passwd;
                     my $result = &add_user($details);
-
                     if ( $result == 0 ) {
                         my $uid = &get_id_name( $ou_users, "uid", $input_user );
-
                         # return 0 - created
-                        &return_message( "SUCCESS",
-                            "User created ${input_user}:${uid}" );
-                    }
-                    elsif ( $result == 1 ) {
-
+                        &return_message( "SUCCESS", "User created ${input_user}:${uid}" );
+                    } elsif ( $result == 1 ) {
                         # return 1 - failed
                         &return_message( "ERROR", "Can not create ${input_user}" );
-                    }
-                    elsif ( $result == 2 ) {
+                    } elsif ( $result == 2 ) {
                         my $uid = &get_id_name( $ou_users, "uid", $input_user );
+                        # return 2 - already exists :)
+                        &return_message( "SUCCESS", "User exists ${input_user}:${uid}" );
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> --description=\"<description>\"" );
+                } 
+            } 
+            when ("group") {
+                if ($input_group) {
+                    my $result = &add_group( $input_group, $input_gid );
+                    if ( $result == 0 ) {
+                        my $gid = &get_id_name( $ou_groups, "cn", $input_group );
+                        # return 0 - created
+                        &return_message( "SUCCESS", "Group created ${input_group}:${gid}" );
+                    } elsif ( $result == 1 ) {
+                        # return 1 - failed
+                        &return_message( "ERROR", "Can not create ${input_group}" );
+                    } elsif ( $result == 2 ) {
+                        my $gid = &get_id_name( $ou_groups, "cn", $input_group );
 
                         # return 2 - already exists :)
-                        &return_message( "SUCCESS",
-                            "User exists ${input_user}:${uid}" );
+                        &return_message( "SUCCESS", "Group exists ${input_group}:${gid}" );
                     }
                 }
                 else {
-                    &return_message( "FATAL", "you need to use the switch --user=<user> --description=\"<description>\""
-                    );
+                    &return_message( "FATAL", "you need to use the switch --group=<group> or switches --group=<group> --gid=<gid>" );
                 }
             }
-            default { 
-                &return_message( "DEBUG", "No Action has been defined" );
-                &usage; 
+            when ("sshkey") {
+                if ( $input_user && $input_ssh_key_file ) {
+                    if ( !&add_ssh_public_key( $input_user, $input_ssh_key_file ) )
+                    {
+                        &return_message( "SUCCESS", "SSH Key task completed" );
+                        exit 0;
+                    } else {
+                        &return_message( "ERROR", "Could not add SSH Keys to LDAP" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> switches --sshfile=<sshfile>" );
+                }
+            }
+            when ("sudorole") {
+                if ($input_sudo_role) {
+                    my $result = &add_sudo_role($input_sudo_role);
+                    if ( !$result ) {
+                        &return_message( "SUCCESS", "Created sudo role ${input_sudo_role}" );
+                        exit 0;
+                    } elsif ( $result == 2 ) {
+                        &return_message( "ERROR", "sudo role already exists" );
+                        exit 1;
+                    } else {
+                        &return_message( "ERROR", "Can not create sudo role ${input_sudo_role}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --sudorole=<role name> for a group use the prefix %" );
+                }
+            }
+            when ("sudocmd") {
+                if ( $input_sudo_role && $input_sudo_command ) {
+                    my $result = &add_sudo_command( $input_sudo_role, $input_sudo_command );
+                    if ( !$result ) {
+                        print "added the command ${input_sudo_command}\n";
+                    } elsif ( $result == 2 ) {
+                        print "${input_sudo_command} already exists for ${input_sudo_role}\n";
+                    } else {
+                        print "failed to add the command ${input_sudo_command}\n";
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switches --sudorole=<role name> --sudocmd=<command>");
+                }                
+            }
+            when ("groupuser") {
+                if ( $input_user && $input_group ) {
+                    my $result = &add_group_user( $input_user, $input_group );
+                    if ( !$result ) {
+                        &return_message( "SUCCESS", "${input_user} added to ${input_group}" );
+                        exit 0;
+                    } else {
+                        &return_message( "ERROR", "Could not add ${input_user} to ${input_group}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> and --group=<group>" );
+                    exit 1;
+                }                
+            }
+            default {
+                &return_message( "FATAL", "The shit hit the fan: '${action_add}' is not a vaild action" );
+                exit 1;
             }
         }
-
     } 
-    elsif ( de($action_modify) ){
-    }
-    elsif ( de($action_delete) ){
-    }
-    elsif ( de($action_show) ){
-    }
-    elsif ( de($action_check) ){
-    }
-
-
-}
-
-############################
-# check what we need to do #
-############################
-sub ccheck_actions {
-
-    # we are using given/when which is perl 5.10> core module
-
-    # check if we have a vaild action or bail.
-    if ( !grep /^${action}$/, @actions ) {
-        &return_message( "FATAL",
-            "The shit hit the fan: '${action}' is not a vaild action" );
-    }
-    &return_message( "DEBUG", "Action: ${action}" );
-
-    # lets put the action to some use
-    given ($action) {
-        when ("adduser") {
-            if ( $input_user && $input_description ) {
-
-          # lets save a lot of shift'ing in the add_user routine and use a hash.
-                my $details;
-                $details->{"user"}        = $input_user;
-                $details->{"uid"}         = $input_uid;
-                $details->{"gid"}         = $input_default_gid;
-                $details->{"description"} = $input_description;
-                $details->{"home"}        = $input_homedir;
-                $details->{"shell"}       = $input_shell;
-                $details->{"pass"}        = $input_passwd;
-                my $result = &add_user($details);
-
-                if ( $result == 0 ) {
-                    my $uid = &get_id_name( $ou_users, "uid", $input_user );
-
-                    # return 0 - created
-                    &return_message( "SUCCESS",
-                        "User created ${input_user}:${uid}" );
-                }
-                elsif ( $result == 1 ) {
-
-                    # return 1 - failed
-                    &return_message( "ERROR", "Can not create ${input_user}" );
-                }
-                elsif ( $result == 2 ) {
-                    my $uid = &get_id_name( $ou_users, "uid", $input_user );
-
-                    # return 2 - already exists :)
-                    &return_message( "SUCCESS",
-                        "User exists ${input_user}:${uid}" );
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user> --description=\"<description>\""
-                );
-            }
-        }
-        when ("addgroup") {
-            if ($input_group) {
-                my $result = &add_group( $input_group, $input_gid );
-                if ( $result == 0 ) {
-                    my $gid = &get_id_name( $ou_groups, "cn", $input_group );
-
-                    # return 0 - created
-                    &return_message( "SUCCESS",
-                        "Group created ${input_group}:${gid}" );
-                }
-                elsif ( $result == 1 ) {
-
-                    # return 1 - failed
-                    &return_message( "ERROR", "Can not create ${input_group}" );
-                }
-                elsif ( $result == 2 ) {
-                    my $gid = &get_id_name( $ou_groups, "cn", $input_group );
-
-                    # return 2 - already exists :)
-                    &return_message( "SUCCESS",
-                        "Group exists ${input_group}:${gid}" );
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --group=<group> or switches --group=<group> --gid=<gid>"
-                );
-            }
-        }
-        when ("addgroupuser") {
-            if ( $input_user && $input_group ) {
-                my $result = &add_group_user( $input_user, $input_group );
-                if ( !$result ) {
-                    &return_message( "SUCCESS",
-                        "${input_user} added to ${input_group}" );
-                    exit 0;
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Could not add ${input_user} to ${input_group}" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user> and --group=<group>"
-                );
-                exit 1;
-            }
-        }
-        when ("addsshkey") {
-            if ( $input_user && $input_ssh_key_file ) {
-                if ( !&add_ssh_public_key( $input_user, $input_ssh_key_file ) )
-                {
-                    &return_message( "SUCCESS", "SSH Key task completed" );
-                    exit 0;
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Could not add SSH Keys to LDAP" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user>  switches --sshfile=<sshfile>"
-                );
-            }
-        }
-        when ("purgeuser") {
-            if ($input_user) {
-                my $result = &delete_user( $input_user, "purge" );
-                if ( $result == 0 ) {
-                    &return_message( "SUCCESS", "Deleted ${input_user}" );
-                    exit 0;
-                }
-                elsif ( $result == 2 ) {
-                    &return_message( "WARN",
-"To deleted ${input_user} please add the switch --commit"
-                    );
-                }
-                elsif ( $result == 3 ) {
-                    &return_message( "ERROR",
-"${input_user} is not disabled, can not purge the account"
-                    );
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Failed to delete ${input_user}" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<user>" );
-                exit 1;
-            }
-        }
-        when ("purgeusers") {
-            my $result = &purge_users;
-            if ( !$result ) {
-                print "users purged\n";
-            }
-            elsif ( $result == 1 ) {
-                print "no users to purge\n";
-            }
-            elsif ( $result == 2 ) {
-                &return_message( "WARN",
-                    "To purge users please add the switch --commit" );
-            }
-        }
-        when ("rmuser") {
-            if ($input_user) {
-                my $result = &delete_user( $input_user, "delete" );
-                if ( $result == 0 ) {
-                    &return_message( "SUCCESS", "Deleted ${input_user}" );
-                    exit 0;
-                }
-                elsif ( $result == 2 ) {
-                    &return_message( "WARN",
-"To deleted ${input_user} please add the switch --commit"
-                    );
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Failed to delete ${input_user}" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<user>" );
-                exit 1;
-            }
-        }
-        when ("deluser") {
-            if ($input_user) {
-                if ( !&change_user_status( $input_user, "lock" ) ) {
-                    print "${input_user} deleted\n";
-                }
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<user>" );
-                exit 1;
-            }
-        }
-        when ("recoveruser") {
-            if ($input_user) {
-                if ( !&change_user_status( $input_user, "unlock" ) ) {
-                    print "${input_user} recovered\n";
-                }
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<user>" );
-                exit 1;
-            }
-        }
-        when ("delgroup") {
-            if ($input_group) {
-                my $result = &delete_group($input_group);
-                if ( $result == 0 ) {
-                    &return_message( "SUCCESS", "Deleted ${input_group}" );
-                }
-                elsif ( $result == 2 ) {
-                    &return_message( "WARN",
-"To deleted ${input_group} please add the switch --commit"
-                    );
-                }
-                elsif ( $result == 3 ) {
-                    &return_message( "ERROR",
-                        "Failed to delete ${input_group} : group does not exist"
-                    );
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Failed to delete ${input_group}" );
-                }
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --group=<group>" );
-            }
-        }
-        when ("delgroupuser") {
-            if ( $input_user && $input_group ) {
-                my $result = &delete_group_user( $input_user, $input_group );
-                if ( !$result ) {
-                    &return_message( "SUCCESS",
-                        "${input_user} deleted from ${input_group}" );
-                    exit 0;
-                }
-                elsif ( $result == 2 ) {
-                    &return_message( "SUCCESS",
-                        "${input_user} not in ${input_group}" );
-                    exit 0;
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Could not delete ${input_user} from ${input_group}" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user> and --group=<group>"
-                );
-                exit 1;
-            }
-        }
-        when ("delsshkey") {
-            if (
-                ($input_user)
-                && (   ( !$input_ssh_key && $input_ssh_key_file )
-                    or ( $input_ssh_key && !$input_ssh_key_file ) )
-              )
-            {
-                my ( $attribute, $value );
-                if ($input_ssh_key) {
-                    $attribute = 'key';
-                    $value     = $input_ssh_key;
-                }
-                if ($input_ssh_key_file) {
-                    $attribute = 'file';
-                    $value     = $input_ssh_key_file;
-                }
-                my $result =
-                  &delete_ssh_public_key( $input_user, $attribute, $value );
-                if ($result) {
-                    &return_message( "ERROR",
-                        "Failed to delete ${input_user} ssh key" );
-                    return 1;
-                }
-                else {
-                    &return_message( "SUCCESS",
-                        "Deleted ${input_user} ssh key" );
-                    return 0;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user> --sshkey=<number> or --sshfile=<file>"
-                );
-            }
-        }
-        when ("moduser") {
-            if ($input_curr_user) {
-                my $details;
-                $details->{"user"}        = $input_user;
-                $details->{"uid"}         = $input_uid;
-                $details->{"gid"}         = $input_default_gid;
-                $details->{"description"} = $input_description;
-                $details->{"home"}        = $input_homedir;
-                $details->{"shell"}       = $input_shell;
-                $details->{"pass"}        = $input_passwd;
-                my $result = &modify_user( $input_curr_user, $details );
-
-                if ( !$result ) {
-                    &return_message( "SUCCESS", "Modified ${input_curr_user}" );
-                    exit(0);
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Could not modify ${input_curr_user}" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --curruser=<user> with --user=<user> and/or --uid=<uid> and other user switches!!!"
-                );
-            }
-        }
-        when ("modgroup") {
-            if ($input_old_group) {
-                my $result =
-                  &modify_group( $input_old_group, $input_group, $input_gid );
-                if ( !$result ) {
-                    &return_message( "SUCCESS", "Modified ${input_old_group}" );
-                    exit(0);
-                }
-                else {
-                    &return_message( "ERROR",
-                        "Could not modify ${input_old_group}" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --oldgroup=<group> with --group=<group> and/or --gid=<gid>"
-                );
-            }
-        }
-        when ("chkuser") {
-            if ( $input_uid && !$input_user ) {
-                &return_message( "DEBUG", "Only uid has been defined" );
-                &return_message( "DEBUG", "uid: ${input_uid}" );
-                if ( my $user =
-                    &get_id_name( $ou_users, "uidNumber", $input_uid ) )
-                {
-                    print "${user}\n";
-                    exit 0;
-                }
-                else {
-                    print "uid avaliable\n";
-                    exit 1;
-                }
-            }
-            elsif ( !$input_uid && $input_user ) {
-                &return_message( "DEBUG", "Only user has been defined" );
-                &return_message( "DEBUG", "user: ${input_user}" );
-                if ( my $uid = &get_id_name( $ou_users, "uid", $input_user ) ) {
-                    print "${uid}\n";
-                    exit 0;
-                }
-                else {
-                    print "user avaliable\n";
-                    exit 1;
-                }
-            }
-            elsif ( $input_uid && $input_user ) {
-                &return_message( "DEBUG",
-                    "Both uid and user have been defined" );
-                &return_message( "DEBUG", "uid: ${input_uid}" );
-                &return_message( "DEBUG", "user: ${input_user}" );
-
-                if ( $input_uid ==
-                    &get_id_name( $ou_users, "uid", $input_user ) )
-                {
-                    print "match\n";
-                    exit 0;
-                }
-                else {
-                    print "no match\n";
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --uid=<uid> and/or --user=<user name>"
-                );
-            }
-        }
-        when ("chkgroup") {
-            if ( $input_gid && !$input_group ) {
-                &return_message( "DEBUG", "Only gid has been defined" );
-                &return_message( "DEBUG", "gid: ${input_gid}" );
-                if ( my $group =
-                    &get_id_name( $ou_groups, "gidNumber", $input_gid ) )
-                {
-                    print "${group}\n";
-                    exit 0;
-                }
-                else {
-                    print "gid avaliable\n";
-                    exit 1;
-                }
-            }
-            elsif ( !$input_gid && $input_group ) {
-                &return_message( "DEBUG", "Only group has been defined" );
-                &return_message( "DEBUG", "group: ${input_group}" );
-                if ( my $gid = &get_id_name( $ou_groups, "cn", $input_group ) )
-                {
-                    print "${gid}\n";
-                    exit 0;
-                }
-                else {
-                    print "group avaliable\n";
-                    exit 1;
-                }
-            }
-            elsif ( $input_gid && $input_group ) {
-                &return_message( "DEBUG",
-                    "Both gid and group have been defined" );
-                &return_message( "DEBUG", "gid: ${input_gid}" );
-                &return_message( "DEBUG", "group: ${input_group}" );
-
-                if ( $input_gid ==
-                    &get_id_name( $ou_groups, "cn", $input_group ) )
-                {
-                    print "match\n";
-                    exit 0;
-                }
-                else {
-                    print "no match\n";
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --uid=<uid> and/or --user=<user name>"
-                );
-            }
-        }
-        when ("chkid") {
-            if ( $input_uid && !$input_gid ) {
-                my $user = &get_id_name( $ou_users, "uidNumber", $input_uid );
-                if ( !$user ) {
-                    &return_message( "DEBUG",
-                        "uid=${input_uid} does not exist" );
-                    print "avaliable\n";
-                    exit 1;
-                }
-                else {
-                    &return_message( "DEBUG", "uid=${input_uid} user=${user}" );
-                    print "taken\n";
-                    exit 0;
-                }
-            }
-            elsif ( !$input_uid && $input_gid ) {
-                my $group = &get_id_name( $ou_groups, "gidNumber", $input_gid );
-                if ( !$group ) {
-                    &return_message( "DEBUG",
-                        "gid=${input_gid} does not exist" );
-                    print "avaliable\n";
-                    exit 1;
-                }
-                else {
-                    &return_message( "DEBUG",
-                        "gid=${input_gid} group=${group}" );
-                    print "taken\n";
-                    exit 0;
-                }
-            }
-            elsif ( $input_uid && $input_gid ) {
-                &return_message( "FATAL",
-                    "you must only use one switch --uid=<uid> or --gid=<gid>" );
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --uid=<uid> or --gid=<gid>" );
-            }
-        }
-        when ("chkname") {
-            if ( $input_user && !$input_group ) {
-                my $uid = &get_id_name( $ou_users, "uid", $input_user );
-                if ( !$uid ) {
-                    &return_message( "DEBUG",
-                        "user=${input_user} does not exist" );
-                    print "avaliable\n";
-                    exit 1;
-                }
-                else {
-                    &return_message( "DEBUG", "user=${input_user} uid=${uid}" );
-                    print "taken\n";
-                    exit 0;
-                }
-            }
-            elsif ( !$input_user && $input_group ) {
-                my $gid = &get_id_name( $ou_groups, "cn", $input_group );
-                if ( !$gid ) {
-                    &return_message( "DEBUG",
-                        "group=${input_group} does not exist" );
-                    print "avaliable\n";
-                    exit 1;
-                }
-                else {
-                    &return_message( "DEBUG",
-                        "group=${input_group} gid=${gid}" );
-                    print "taken\n";
-                    exit 0;
-                }
-            }
-            elsif ( $input_user && $input_group ) {
-                &return_message( "FATAL",
-"you must only use one switch --user=<user> or --group=<group>"
-                );
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user> or --group=<group>"
-                );
-            }
-        }
-        when ("chksshkey") {
-            if ( $input_user && $input_ssh_key_file ) {
-                if (
-                    !&check_ssh_public_key( $input_user, $input_ssh_key_file ) )
-                {
-                    &return_message( "SUCCESS", "SSH Keys match" );
-                    exit 0;
-                }
-                else {
-                    &return_message( "ERROR", "SSH Keys do not match" );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --user=<user> or --sshfile=<authorized_keys>"
-                );
-            }
-        }
-        when ("showuser") {
-            if (   ( !$input_user && $input_uid )
-                || ( $input_user && !$input_uid ) )
-            {
-                if ($input_user) {
-                    &return_message( "DEBUG", "user: ${input_user}" );
-                    &show_user( "uid", $input_user );
-                }
-                elsif ($input_uid) {
+    elsif ( de($action_check) ) {
+        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );       
+        given ($action_check) {            
+            when ("user") {
+                if ( $input_uid && !$input_user ) {
+                    &return_message( "DEBUG", "Only uid has been defined" );
                     &return_message( "DEBUG", "uid: ${input_uid}" );
-                    &show_user( "uidNumber", $input_uid );
-                }
-            }
-            elsif ( $input_user && $input_uid ) {
-                &return_message( "FATAL",
-                    "you must only use one switch --user=<user> or --uid=<uid>"
-                );
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<user> or --uid=<uid>" );
-            }
-        }
-        when ("showusers") {
-            &show_users;
-        }
-        when ("showdisabledusers") {
-            &show_users("disabled");
-        }
-        when ("userstatus") {
-            if ($input_user) {
-                if ( &get_user_status($input_user) eq "TRUE" ) {
-                    print "disabled\n";
-                    exit 1;
-                }
-                else {
-                    print "enabled\n";
-                    exit 0;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<USER>" );
-            }
-        }
-        when ("showgroup") {
-            if (   ( !$input_group && $input_gid )
-                || ( $input_group && !$input_gid ) )
-            {
-                if ($input_group) {
-                    &return_message( "DEBUG", "group: ${input_group}" );
-                    &show_group( "cn", $input_group );
+                    if ( my $user = &get_id_name( $ou_users, "uidNumber", $input_uid ) ) {
+                        print "${user}\n";
+                        exit 0;
+                    } else {
+                        print "uid avaliable\n";
+                        exit 1;
+                    }
+                } elsif ( !$input_uid && $input_user ) {
+                    &return_message( "DEBUG", "Only user has been defined" );
+                    &return_message( "DEBUG", "user: ${input_user}" );
+                    if ( my $uid = &get_id_name( $ou_users, "uid", $input_user ) ) {
+                        print "${uid}\n";
+                        exit 0;
+                    } else {
+                        print "user avaliable\n";
+                        exit 1;
+                    }
+                } elsif ( $input_uid && $input_user ) {
+                    &return_message( "DEBUG", "Both uid and user have been defined" );
+                    &return_message( "DEBUG", "uid: ${input_uid}" );
+                    &return_message( "DEBUG", "user: ${input_user}" );
 
-                }
-                elsif ($input_gid) {
+                    if ( $input_uid == &get_id_name( $ou_users, "uid", $input_user ) )
+                    {
+                        print "match\n";
+                        exit 0;
+                    } else {
+                        print "no match\n";
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --uid=<uid> and/or --user=<user name>" );
+                }            
+            }
+            when ("group") {
+                if ( $input_gid && !$input_group ) {
+                    &return_message( "DEBUG", "Only gid has been defined" );
                     &return_message( "DEBUG", "gid: ${input_gid}" );
-                    &show_group( "gidNumber", $input_gid );
-                }
-            }
-            elsif ( $input_group && $input_gid ) {
-                &return_message( "FATAL",
-"you must only use one switch --group=<group> or --gid=<gid>"
-                );
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --group=<group> or --gid=<gid>"
-                );
-            }
-        }
-        when ("showgroups") {
-            &show_groups;
-        }
-        when ("showsshkeys") {
-            if ($input_user) {
-                &show_ssh_public_keys($input_user);
-            }
-            else {
-                &return_message( "FATAL",
-                    "you need to use the switch --user=<user>" );
-            }
-        }
+                    if ( my $group = &get_id_name( $ou_groups, "gidNumber", $input_gid ) ) {
+                        print "${group}\n";
+                        exit 0;
+                    } else {
+                        print "gid avaliable\n";
+                        exit 1;
+                    }
+                } elsif ( !$input_gid && $input_group ) {
+                    &return_message( "DEBUG", "Only group has been defined" );
+                    &return_message( "DEBUG", "group: ${input_group}" );
+                    if ( my $gid = &get_id_name( $ou_groups, "cn", $input_group ) ) {
+                        print "${gid}\n";
+                        exit 0;
+                    } else {
+                        print "group avaliable\n";
+                        exit 1;
+                    }
+                } elsif ( $input_gid && $input_group ) {
+                    &return_message( "DEBUG",
+                        "Both gid and group have been defined" );
+                    &return_message( "DEBUG", "gid: ${input_gid}" );
+                    &return_message( "DEBUG", "group: ${input_group}" );
 
-        # sudoers
-        when ("addsudorole") {
-            if ($input_sudo_role) {
-                my $result = &add_sudo_role($input_sudo_role);
-                if ( !$result ) {
-                    &return_message( "SUCCESS",
-                        "Created sudo role ${input_sudo_role}" );
-                    exit 0;
+                    if ( $input_gid == &get_id_name( $ou_groups, "cn", $input_group ) ) {
+                        print "match\n";
+                        exit 0;
+                    } else {
+                        print "no match\n";
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --uid=<uid> and/or --user=<user name>" );
+                }            
+            }
+            when ("sshkey") {
+                if ( $input_user && $input_ssh_key_file ) {
+                    if ( !&check_ssh_public_key( $input_user, $input_ssh_key_file ) ) {
+                        &return_message( "SUCCESS", "SSH Keys match" );
+                        exit 0;
+                    } else {
+                        &return_message( "ERROR", "SSH Keys do not match" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> or --sshfile=<authorized_keys>" );
+                }               
+            }
+            when ("sudorole") {
+                if ($input_sudo_role) {
+                    if ( !&check_sudo_role($input_sudo_role) ) {
+                        print "taken\n";
+                        exit 0;
+                    } else {
+                        print "avaliable\n";
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --sudorole=<role name> for a group use the prefix %" );
+                }               
+            }
+            when ("uid") {
+                if ( $input_uid && !$input_gid ) {
+                    my $user = &get_id_name( $ou_users, "uidNumber", $input_uid );
+                    if ( !$user ) {
+                        &return_message( "DEBUG", "uid=${input_uid} does not exist" );
+                        print "avaliable\n";
+                        exit 1;
+                    } else {
+                        &return_message( "DEBUG", "uid=${input_uid} user=${user}" );
+                        print "taken\n";
+                        exit 0;
+                    }
+                } elsif ( !$input_uid && $input_gid ) {
+                    my $group = &get_id_name( $ou_groups, "gidNumber", $input_gid );
+                    if ( !$group ) {
+                        &return_message( "DEBUG", "gid=${input_gid} does not exist" );
+                        print "avaliable\n";
+                        exit 1;
+                    } else {
+                        &return_message( "DEBUG", "gid=${input_gid} group=${group}" );
+                        print "taken\n";
+                        exit 0;
+                    }
+                } elsif ( $input_uid && $input_gid ) {
+                    &return_message( "FATAL", "you must only use one switch --uid=<uid> or --gid=<gid>" );
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --uid=<uid> or --gid=<gid>" );
+                }                
+            }
+            when ("name") {
+                if ( $input_user && !$input_group ) {
+                    my $uid = &get_id_name( $ou_users, "uid", $input_user );
+                    if ( !$uid ) {
+                        &return_message( "DEBUG",
+                            "user=${input_user} does not exist" );
+                        print "avaliable\n";
+                        exit 1;
+                    } else {
+                        &return_message( "DEBUG", "user=${input_user} uid=${uid}" );
+                        print "taken\n";
+                        exit 0;
+                    }
+                } elsif ( !$input_user && $input_group ) {
+                    my $gid = &get_id_name( $ou_groups, "cn", $input_group );
+                    if ( !$gid ) {
+                        &return_message( "DEBUG",
+                            "group=${input_group} does not exist" );
+                        print "avaliable\n";
+                        exit 1;
+                    } else {
+                        &return_message( "DEBUG",
+                            "group=${input_group} gid=${gid}" );
+                        print "taken\n";
+                        exit 0;
+                    }
+                } elsif ( $input_user && $input_group ) {
+                    &return_message( "FATAL", "you must only use one switch --user=<user> or --group=<group>" );
+                } else { 
+                    &return_message( "FATAL", "you need to use the switch --user=<user> or --group=<group>" );
                 }
-                elsif ( $result == 2 ) {
-                    &return_message( "ERROR", "sudo role already exists" );
+            }
+            default {
+                &return_message( "FATAL", "The shit hit the fan: '${action_check}' is not a vaild action" );
+                exit 1;
+            }
+        }    
+    }
+    elsif ( de($action_delete) ) {
+        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
+        given ($action_delete) {
+            when ("user") {
+                if ($input_user) {
+                    if ( !&change_user_status( $input_user, "lock" ) ) {
+                        print "${input_user} deleted\n";
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user>" );
+                    exit 1;
+                }                
+            }
+            when ("group") {
+                if ($input_group) {
+                    my $result = &delete_group($input_group);
+                    if ( $result == 0 ) {
+                        &return_message( "SUCCESS", "Deleted ${input_group}" );
+                    } elsif ( $result == 2 ) {
+                        &return_message( "WARN", "To deleted ${input_group} please add the switch --commit" );
+                    } elsif ( $result == 3 ) {
+                        &return_message( "ERROR", "Failed to delete ${input_group} : group does not exist" );
+                    } else {
+                        &return_message( "ERROR", "Failed to delete ${input_group}" );
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --group=<group>" );
+                }
+            }
+            when ("sshkey") {
+                if ( ($input_user) && (   ( !$input_ssh_key && $input_ssh_key_file ) or ( $input_ssh_key && !$input_ssh_key_file ) ) ) {
+                    my ( $attribute, $value );
+                    if ($input_ssh_key) {
+                        $attribute = 'key';
+                        $value     = $input_ssh_key;
+                    }
+
+                    if ($input_ssh_key_file) {
+                        $attribute = 'file';
+                        $value     = $input_ssh_key_file;
+                    }
+                    my $result = &delete_ssh_public_key( $input_user, $attribute, $value );
+                    if ($result) {
+                        &return_message( "ERROR", "Failed to delete ${input_user} ssh key" );
+                        return 1;
+                    } else {
+                        &return_message( "SUCCESS", "Deleted ${input_user} ssh key" );
+                        return 0;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> --sshkey=<number> or --sshfile=<file>" );
+                }                
+            }
+            when ("sudorole") {
+                if ($input_sudo_role) {
+                    my $result = &delete_sudo_role($input_sudo_role);
+                    if ( !$result ) {
+                        print "${input_sudo_role} deleted\n";
+                        exit 0;
+                    } elsif ( $result == 1 ) {
+                        &return_message( "WARN", "To deleted ${input_sudo_role} please add the switch --commit" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --sudorole=<role name> for a group use the prefix %" );
+                }                
+            }
+            when ("sudocmd") {
+                if ( $input_sudo_role && $input_sudo_command ) {
+                    my $result = &delete_sudo_command( $input_sudo_role, $input_sudo_command );
+                    if ( !$result ) {
+                        print "deleted the command ${input_sudo_command}\n";
+                    } elsif ( $result == 2 ) {
+                        print "${input_sudo_command} does not exists for ${input_sudo_role}\n";
+                    } else {
+                        print "failed to delete the command ${input_sudo_command}\n";
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switches --sudorole=<role name> --sudocmd=<command>" );
+                }                
+            }
+            when ("groupuser") {
+                if ( $input_user && $input_group ) {
+                    my $result = &delete_group_user( $input_user, $input_group );
+                    if ( !$result ) {
+                        &return_message( "SUCCESS", "${input_user} deleted from ${input_group}" );
+                        exit 0;
+                    } elsif ( $result == 2 ) {
+                        &return_message( "SUCCESS", "${input_user} not in ${input_group}" );
+                        exit 0;
+                    } else {
+                        &return_message( "ERROR",
+                            "Could not delete ${input_user} from ${input_group}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> and --group=<group>" );
+                    exit 1;
+                }                
+            }
+            when ("purgeuser") {
+                if ($input_user) {
+                    my $result = &delete_user( $input_user, "purge" );
+                    if ( $result == 0 ) {
+                        &return_message( "SUCCESS", "Deleted ${input_user}" );
+                        exit 0;
+                    } elsif ( $result == 2 ) {
+                        &return_message( "WARN", "To deleted ${input_user} please add the switch --commit" );
+                    } elsif ( $result == 3 ) {
+                        &return_message( "ERROR", "${input_user} is not disabled, can not purge the account" );
+                    } else {
+                        &return_message( "ERROR", "Failed to delete ${input_user}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user>" );
+                    exit 1;
+                }               
+            }
+            when ("purgeusers") {
+                my $result = &purge_users;
+                if ( !$result ) {
+                    print "users purged\n";
+                } elsif ( $result == 1 ) {
+                    print "no users to purge\n";
+                } elsif ( $result == 2 ) {
+                    &return_message( "WARN", "To purge users please add the switch --commit" );
+                }                
+            }
+            when ("rmuser") {
+                if ($input_user) {
+                    my $result = &delete_user( $input_user, "delete" );
+                    if ( $result == 0 ) {
+                        &return_message( "SUCCESS", "Deleted ${input_user}" );
+                        exit 0;
+                    } elsif ( $result == 2 ) {
+                        &return_message( "WARN", "To deleted ${input_user} please add the switch --commit" );
+                    } else {
+                        &return_message( "ERROR", "Failed to delete ${input_user}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user>" );
                     exit 1;
                 }
-                else {
-                    &return_message( "ERROR",
-                        "Can not create sudo role ${input_sudo_role}" );
-                    exit 1;
-                }
             }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --sudorole=<role name> for a group use the prefix %"
-                );
+            default {
+                &return_message( "FATAL", "The shit hit the fan: '${action_delete}' is not a vaild action" );
+                exit 1;
             }
         }
-        when ("addsudocmd") {
-            if ( $input_sudo_role && $input_sudo_command ) {
-                my $result =
-                  &add_sudo_command( $input_sudo_role, $input_sudo_command );
-                if ( !$result ) {
-                    print "added the command ${input_sudo_command}\n";
-                }
-                elsif ( $result == 2 ) {
-                    print
-"${input_sudo_command} already exists for ${input_sudo_role}\n";
-                }
-                else {
-                    print "failed to add the command ${input_sudo_command}\n";
-                }
+    }
+    elsif ( de($action_modify) ) {
+        # ( "user", "group", "sudorole" );
+        given ($action_modify) {
+            when ("user") {
+                if ($input_curr_user) {
+                    my $details;
+                    $details->{"user"}        = $input_user;
+                    $details->{"uid"}         = $input_uid;
+                    $details->{"gid"}         = $input_default_gid;
+                    $details->{"description"} = $input_description;
+                    $details->{"home"}        = $input_homedir;
+                    $details->{"shell"}       = $input_shell;
+                    $details->{"pass"}        = $input_passwd;
+                    my $result = &modify_user( $input_curr_user, $details );
+
+                    if ( !$result ) {
+                        &return_message( "SUCCESS", "Modified ${input_curr_user}" );
+                        exit(0);
+                    } else {
+                        &return_message( "ERROR", "Could not modify ${input_curr_user}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --curruser=<user> with --user=<user> and/or --uid=<uid> and other user switches!!!" );
+                }                
             }
-            else {
-                &return_message( "FATAL",
-"you need to use the switches --sudorole=<role name> --sudocmd=<command>"
-                );
+            when ("group") {
+                if ($input_old_group) {
+                    my $result = &modify_group( $input_old_group, $input_group, $input_gid );
+                    if ( !$result ) {
+                        &return_message( "SUCCESS", "Modified ${input_old_group}" );
+                        exit(0);
+                    } else {
+                        &return_message( "ERROR", "Could not modify ${input_old_group}" );
+                        exit 1;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --oldgroup=<group> with --group=<group> and/or --gid=<gid>" );
+                }                
             }
+            when ("sudorole") {
+                print "modify=sudorole: is in progress! - feedback will be highly appreciated."
+            }
+            default {
+                &return_message( "FATAL", "The shit hit the fan: '${action_delete}' is not a vaild action" );
+                exit 1;
+            }            
         }
-        when ("chksudocmd") {
-            if ( $input_sudo_role && $input_sudo_command ) {
-                if (
-                    !&check_sudo_command(
-                        $input_sudo_role, $input_sudo_command
-                    )
-                  )
+    }
+    elsif ( de($action_list) ) {
+        # ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
+        given ($action_list) {
+            when ("user") {
+                if ( ( !$input_user && $input_uid ) || ( $input_user && !$input_uid ) )
                 {
-                    print "taken\n";
-                    exit 0;
-                }
-                else {
-                    print "avaliable\n";
-                    exit 1;
-                }
+                    if ($input_user) {
+                        &return_message( "DEBUG", "user: ${input_user}" );
+                        &show_user( "uid", $input_user );
+                    } elsif ($input_uid) {
+                        &return_message( "DEBUG", "uid: ${input_uid}" );
+                        &show_user( "uidNumber", $input_uid );
+                    }
+                } elsif ( $input_user && $input_uid ) {
+                    &return_message( "FATAL", "you must only use one switch --user=<user> or --uid=<uid>" );
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user> or --uid=<uid>" );
+                }                
             }
-            else {
-                &return_message( "FATAL",
-"you need to use the switchs --sudorole=<role name> --sudocmd=<COMMAND>"
-                );
+            when ("group") {
+                if ( ( !$input_group && $input_gid ) || ( $input_group && !$input_gid ) ) {
+                    if ($input_group) {
+                        &return_message( "DEBUG", "group: ${input_group}" );
+                        &show_group( "cn", $input_group );
+
+                    } elsif ($input_gid) {
+                        &return_message( "DEBUG", "gid: ${input_gid}" );
+                        &show_group( "gidNumber", $input_gid );
+                    }
+                } elsif ( $input_group && $input_gid ) {
+                    &return_message( "FATAL", "you must only use one switch --group=<group> or --gid=<gid>" );
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --group=<group> or --gid=<gid>" );
+                }                
+            }
+            when ("users") {
+                &show_users;                
+            }
+            when ("groups") {
+                &show_groups;
+            }
+            when ("sshkeys") {
+                if ($input_user) {
+                    &show_ssh_public_keys($input_user);
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<user>" );
+                }                
+            }
+            when ("disabledusers") {
+                &show_users("disabled");
+            }
+            when ("userstatus") {
+                if ($input_user) {
+                    if ( &get_user_status($input_user) eq "TRUE" ) {
+                        print "disabled\n";
+                        exit 1;
+                    } else {
+                        print "enabled\n";
+                        exit 0;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<USER>" );
+                }                
+            }
+            default {
+                &return_message( "FATAL", "The shit hit the fan: '${action_list}' is not a vaild action" );
+                exit 1;
             }
 
-        }
-        when ("chksudorole") {
-            if ($input_sudo_role) {
-                if ( !&check_sudo_role($input_sudo_role) ) {
-                    print "taken\n";
-                    exit 0;
-                }
-                else {
-                    print "avaliable\n";
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --sudorole=<role name> for a group use the prefix %"
-                );
-            }
-        }
-        when ("modsudorole") {
-
-            # In Progress!!
-        }
-        when ("delsudorole") {
-            if ($input_sudo_role) {
-                my $result = &delete_sudo_role($input_sudo_role);
-                if ( !$result ) {
-                    print "${input_sudo_role} deleted\n";
-                    exit 0;
-                }
-                elsif ( $result == 1 ) {
-                    &return_message( "WARN",
-"To deleted ${input_sudo_role} please add the switch --commit"
-                    );
-                    exit 1;
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switch --sudorole=<role name> for a group use the prefix %"
-                );
-            }
-        }
-        when ("delsudocmd") {
-            if ( $input_sudo_role && $input_sudo_command ) {
-                my $result =
-                  &delete_sudo_command( $input_sudo_role, $input_sudo_command );
-                if ( !$result ) {
-                    print "deleted the command ${input_sudo_command}\n";
-                }
-                elsif ( $result == 2 ) {
-                    print
-"${input_sudo_command} does not exists for ${input_sudo_role}\n";
-                }
-                else {
-                    print
-                      "failed to delete the command ${input_sudo_command}\n";
-                }
-            }
-            else {
-                &return_message( "FATAL",
-"you need to use the switches --sudorole=<role name> --sudocmd=<command>"
-                );
-            }
-        }
-
-        default {
-            &return_message( "FATAL",
-"The shit hit the fan some one has forgotten to define the action: '${action}'"
-            );
-            exit 1;
-        }
+        }        
     }
 }
 
@@ -3543,10 +3234,14 @@ if ( $result->code ) {
           . ldap_error_text( $result->code ) );
 }
 
-# if ( !$action ) {
-#     return_message( "DEBUG", "No Action has been defined" );
-#     &usage;
-# }
+if (de($action_add)
+  + de($action_check)
+  + de($action_delete)
+  + de($action_modify)
+  + de($action_list) == 0) {
+  return_message( "DEBUG", "No Action has been defined" );
+  &usage;
+}
 
 if ( grep /^[Yy][Ee][Ss]$/, $auto_commit ) {
     $commit = 1;
@@ -3569,9 +3264,30 @@ ldapadmin - create, delete or modify unix users, groups and sudoers permissions 
 
 =over 8
 
-=item B<ldapadmin> [options]
+=item B<ldapadmin> 
 
-[--action=<action>] [--comment="<comment>"] [--config=<config_file>] [--commit] [--defaultguid=<gid>] [--homedir=<home_dir] [--user=<user>] [--curruser=<user>] [--uid=<uid>] [--group=<group>] [--gid=<gid>] [--oldgroup=<group>] [--shell=<shell>] [--sshkey=<key_number>] [--sshfile=<authorized_keys>] [--sudorole=<role>] [--sudocmd=<command>] [--help] [--man]
+First option must be a mode specifier.
+
+Actions:
+
+    -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
+    -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+    -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"]
+    -m, --modify            modify ["user", "group", "sudorole"]
+    -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+    -h, --help              display this help and exit
+        --man               display man page
+        --debug             increase verbosity level by one
+        --loglevel=<LEVEL>  level is between 1-6, 1 being debug
+        --version           output version information and exit
+
+
+Common Options: 
+
+  [--comment="<comment>"] [--config=<config_file>] [--commit] [--defaultguid=<gid>] 
+  [--homedir=<home_dir] [--user=<user>] [--curruser=<user>] [--uid=<uid>] [--group=<group>]
+  [--gid=<gid>] [--oldgroup=<group>] [--shell=<shell>] [--sshkey=<key_number>]
+  [--sshfile=<authorized_keys>] [--sudorole=<role>] [--sudocmd=<command>]
 
 =back
 
