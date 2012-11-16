@@ -239,17 +239,6 @@ sub return_message {
 # show command line usage # In Progress!!
 ###########################
 sub usage {
-# TODO: future work
-# First option must be a mode specifier:
-#   --add Add  --modify Modify  --show Show  --delete Delete  --check Check
-#    -a         -m               -s           -d              -c
-#
-# ie: ldapadmin -add=user --user=<s> --comment=<s> ..
-#     ldapadmin -add=group --user=<s> --comment=<s> ..
-#     ldapadmin -add=sshkey --user=<s> --comment=<s> ..
-#     ldapadmin -add=sudorole --user=<s> --comment=<s> ..
-#     ldapadmin -add=sudocmd --user=<s> --comment=<s> ..
-
     print <<_END_;
 LDAP Access Control Version ${version}
 
@@ -283,63 +272,43 @@ Common Options:
 
 Examples:
 
-  :Add user
-   ${self} -a user --user=<s> --comment=<s> [ --uid=<i> --homedir=<s> --shell=<s> --defaultgid=<i> --password=<s> ]
+Add Actions
+  Add user:                 ${self} -a user --user=<s> --comment=<s> [ --uid=<i> --homedir=<s> --shell=<s> --defaultgid=<i> --password=<s> ]
+  Add user to a group:      ${self} -a groupuser --user=<s> --group=<s>
+  Add group:                ${self} -a group --group=<s> [ --gid=<i> ]
+  Add SSH key:              ${self} -a sshkey --user=<s> --sshfile=<s>
+  Add SUDO role:            ${self} -a sudorole --sudorole=<s>
+  Add SUDO command to role: ${self} -a sudocmd --sudorole=<s> --sudocmd=<s>
+
+Check Actions 
+  Check user:               ${self} -c user --user=<s> [ --uid=<i> ]
+  Check group:              ${self} -c group --user=<s> [ --gid=<i> ]
+  Check SSH key:            ${self} -c sshkey --user=<s> --sshfile=<s>
+  Check SUDO role:          ${self} -c sudorole --sudorole=<s>
+  Check SUDO command exist: ${self} -c sudocmd --sudorole=<s> --sudocmd=<s>
   
-  :Check user
-   ${self} -c user --user=<s> [ --uid=<i> ]
-  
-  :Delete user
-   ${self} -d user --user=<s> [ --commit ]
-  
-  :Modify user
-   ${self} -m user --curruser=<s> --user=<i> [ --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
-  
-  :List user
-   ${self} -l user --user=<s> --user=<i> [ --uid=<s> ]
+Delete Actions
+  Delete user:              ${self} -d user --user=<s> [ --commit ]
+  Delete user from group:   ${self} -d user --user=<s> --group=<s>
+  Delete a group:           ${self} -d group --group=<s> [ --commit ]
+  Delete SSH key:           ${self} -d sshkey --user=<s> --sshkey=<i> or --sshfile=<s>
+  Delete SUDO role:         ${self} -d sudorole --sudorole=<s> [ --commit ]
+  Delete SUDO command:      ${self} -d sudocmd --sudorole=<s> --sudocmd=<s>    
+
+Modify Actions
+  Modify user:              ${self} -m user --curruser=<s> --user=<i> [ --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+  Modify group:             ${self} -m group --oldgroup=<s> --group=<i> --gid=<s>
+
+List Actions
+  List user:                ${self} -l user --user=<s> --user=<i> [ --uid=<s> ]
+  List all users:           ${self} -l users
+  List group:               ${self} -l group [ --gid=<i> ]
+  List groups:              ${self} -l groups
+  List SSH keys:            ${self} -l sshkeys --user=<s>
 
 _END_
     exit;
 
-# showusers     Show All Users 
-# addgroupuser  Add User to a group
-#   required:    --user=<s> --group=<s>
-# delgroupuser  Delete a user from a group
-#   required:    --user=<s> --group=<s>
-# addgroup      Add group
-#   required:    --group=<s>
-#   optional:    --gid=<i>
-# modgroup      Modify group
-#   required:    --oldgroup=<s> --group=<s> and/or --gid=<i>  
-# delgroup      Delete group
-#   required:    --group=<s>
-#   opti:onal    --commit
-# chkgroup      Check group
-#   required:    --group=<s> and/or --gid=<i>
-# showgroup     Show Group Details and Users
-#   required:    --group=<s> or --gid=<i>
-# showgroups    Show all Groups
-# addsshkey     Add user's SSH Keys
-#   required:    --user=<s> --sshfile=<s>
-# delsshkey     Delete user's SSH Keys
-#   required:    --user=<s> --sshkey=<i> or --sshfile=<s>
-# showsshkeys   Show a users SSH Public Keys
-#   required:    --user=<s>  
-# chksshkey     Check a users SSH Public Keys
-#   required:    --user=<s> --sshfile=<s>
-# addsudorole   Add sudo role
-#   required:    --sudorole=<s>
-# addsudocmd    Add sudo command to role
-#   required:    --sudorole=<s> --sudocmd=<s>
-# chksudorole   Check sudo role exists
-#   required:    --sudorole=<s>
-# chksudocmd    Check sudo command exists
-#   required:    --sudorole=<s> --sudocmd=<s>
-# delsudorole   Delete sudo role
-#   required:    --sudorole=<s>
-#   optional:    --commit
-# delsudocmd    Delete sudo command
-#   required:    --sudorole=<s> --sudocmd=<s>    
 }
 
 ############
