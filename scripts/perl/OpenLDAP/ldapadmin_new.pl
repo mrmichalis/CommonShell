@@ -134,10 +134,10 @@ my @sudo_groups = ("%${standard_group}");
 
 ## command line switches
 my $action_add;             # --add=<s>     || -a=<s>
-my $action_modify;          # --modify=<s>  || -m=<s>
-my $action_delete;          # --delete=<s>  || -d=<s>
-my $action_list;            # --list=<s>    || -l=<s>
 my $action_check;           # --check=<s>   || -c=<s>
+my $action_delete;          # --delete=<s>  || -d=<s>
+my $action_modify;          # --modify=<s>  || -m=<s>
+my $action_list;            # --list=<s>    || -l=<s>
 
 my $input_user;            # --user=<s>
 my $input_curr_user;       # --curruser=<s>
