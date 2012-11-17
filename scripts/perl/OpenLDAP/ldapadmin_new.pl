@@ -3,6 +3,9 @@
 # $Id: ldapadmin.pl,v 1.8 2012/05/23 16:40:50 dannyc Exp dannyc $
 # $Log: ldapadmin.pl,v $
 #
+# Revision 1.9.5 2012/11/17  18:50:26  michalis
+# switch --action= removed - in favour of --add, --check, --delete, --modify, --list
+#
 # Revision 1.9 2012/11/06  15:46:26  michalis
 # implemented modify_user functionality - added modify: uid/uidNumber/
 #
@@ -79,7 +82,7 @@ my @config_locations =
 
 my $ldap;
 my $program       = "ldapadmin";
-my $version       = "1.9.1";
+my $version       = "1.9.5";
 my $message_level = 4;
 my $self          = &get_me;
 
@@ -305,7 +308,6 @@ List Actions
   List group:               ${self} -l group [ --gid=<i> ]
   List groups:              ${self} -l groups
   List SSH keys:            ${self} -l sshkeys --user=<s>
-
 _END_
     exit;
 
@@ -3269,67 +3271,27 @@ Default settings can be modifed in the configuration file.
 
 =over 8
 
-=item B<--action>=I<ACTION>
+=item B<First option must be a mode specifier.>
 
-I<adduser>       Add a user to LDAP
+=item I<-a, --add>
 
-I<adduser>       Add a user to LDAP
+add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
 
-I<addsshkey>     Import public SSH keys from a file
+=item I<-c, --check>
 
-I<addgroup>      Add a group to LDAP
+check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
 
-I<addgroupuser>  Add a user to a group
+=item I<-d, --delete>
 
-I<addsudorole>   Add a sudo role
+delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"]
 
-I<addsudocmd>    Add a sudo command to a sudo role
+=item I<-m, --modify>
 
-I<chkid>         Check if a uid or gid is taken
+modify ["user", "group", "sudorole"]
 
-I<chkname>       Check if a group or user name if taken
+=item I<-l, --list>
 
-I<chkuser>       Check if a user exists in LDAP
-
-I<chksshkey>     Check if SSH keys in a file match the LDAP entries
-
-I<chkgroup>      Check if a group exists
-
-I<chksudorole>   Check if a sudo role is taken
-
-I<chksudocmd>    Check if a sudo command has been set
-
-I<deluser>       Delete a user from LDAP
-
-I<purgeuser>     Purge a deleted user from LDAP
-
-I<purgeusers>    Purge all deleted users from LDAP
-
-I<recoveruser>   Recover a deleted user in LDAP
-
-I<delsshkey>     Delete a public SSH keys from LDAP
-
-I<delgroup>      Delete a group from LDAP
-
-I<delgroupuser>  Remove a user from a group
-
-I<delsudorole>   Delete a sudo role
-
-I<delsudocmd>    Delete a sudo command from a sudo role
-
-I<moduser>       Modify a users settings
-
-I<modgroup>      Modify a groups name or gid
-
-I<showuser>      Show a users details
-
-I<showusers>     Show all users in LDAP
- 
-I<showgroup>     Show a groups details and users
-
-I<showgroups>    Show all groups in LDAP
-
-I<showsshkeys>   Show a users public SSH Keys
+list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
 
 =item B<--comment>=I<COMMENT>
 
@@ -3413,154 +3375,71 @@ Prints the manual page and exits.
 
 =back
 
-
-
 =head1 EXAMPLES
 
 =over 8
+=begin text 
+
+B<Add Actions>
+ Add user:
+    ldapadmin -a user --user=<s> --comment=<s> [ --uid=<i> --homedir=<s> --shell=<s> --defaultgid=<i> --password=<s> ]
+ Add user to a group:
+    ldapadmin -a groupuser --user=<s> --group=<s>
+ Add group:
+    ldapadmin -a group --group=<s> [ --gid=<i> ]
+ Add SSH key:
+    ldapadmin -a sshkey --user=<s> --sshfile=<s>
+ Add SUDO role:
+    ldapadmin -a sudorole --sudorole=<s>
+ Add SUDO command to role:
+    ldapadmin -a sudocmd --sudorole=<s> --sudocmd=<s>
+
+B<Check Actions>
+ Check user:
+    ldapadmin -c user --user=<s> [ --uid=<i> ]
+ Check group:
+    ldapadmin -c group --user=<s> [ --gid=<i> ]
+ Check SSH key:
+    ldapadmin -c sshkey --user=<s> --sshfile=<s>
+ Check SUDO role:
+    ldapadmin -c sudorole --sudorole=<s>
+ Check SUDO command exist:
+    ldapadmin -c sudocmd --sudorole=<s> --sudocmd=<s>
+  
+B<Delete Actions>
+ Delete user:
+    ldapadmin -d user --user=<s> [ --commit ]
+ Delete user from group:
+    ldapadmin -d user --user=<s> --group=<s>
+ Delete a group:
+    ldapadmin -d group --group=<s> [ --commit ]
+ Delete SSH key:
+    ldapadmin -d sshkey --user=<s> --sshkey=<i> or --sshfile=<s>
+ Delete SUDO role:
+    ldapadmin -d sudorole --sudorole=<s> [ --commit ]
+ Delete SUDO command:
+    ldapadmin -d sudocmd --sudorole=<s> --sudocmd=<s>    
+
+B<Modify Actions>
+ Modify user:
+    ldapadmin -m user --curruser=<s> --user=<i> [ --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+ Modify group:
+    ldapadmin -m group --oldgroup=<s> --group=<i> --gid=<s>
+
+B<List Actions>
+ List user:
+    ldapadmin -l user --user=<s> --user=<i> [ --uid=<s> ]
+ List all users:
+    ldapadmin -l users
+ List group:
+    ldapadmin -l group [ --gid=<i> ]
+ List groups:
+    ldapadmin -l groups
+ List SSH keys:
+    ldapadmin -l sshkeys --user=<s>
+
+=end text
 
-=item B<Add User>
-
-ldapadmin --action=adduser --user=testuser --comment="Test User"
-
-ldapadmin --action=adduser --user=testuser --comment="Test User" --uid=3456 --shell=bash --homedir=/home/testuser
-
-=item B<Add Group>
-
-ldapadmin --action=addgroup --group=testgroup
-
-ldapadmin --action=addgroup --group=testgroup --gid=3456
-
-=item B<Add User to a Group>
-
-ldapadmin --action=addgroupuser --group=testgroup --user=testuser
-
-=item B<Add SSH Public Key>
-
-ldapadmin --action=addsshkey --user=testuser --sshfile=testuser.pub
-
-=item B<Add sudo role>
-
-ldapadmin --action=addsudorole --sudorole %test
-
-=item B<Add sudo command>
-
-ldapadmin --action=addsudocmd --sudorole %test --sudocmd ALL
-
-=item B<Modify User>
-
-ldapadmin --action=moduser --curruser=testuser --uid=3456
-
-ldapadmin --action=moduser --curruser=testuser --user=newtestuser
-
-ldapadmin --action=moduser --curruser=testuser --description="Test User"
-
-ldapadmin --action=moduser --curruser=testuser --shell=bash --homedir=/home/testuser
-
-=item B<Modify Group>
-
-ldapadmin --action=modgroup --oldgroup=testgroup --group=testgroup2
-
-ldapadmin --action=modgroup --oldgroup=testgroup --gid=3456
-
-ldapadmin --action=modgroup --oldgroup=testgroup --group=testgroup2 --gid=3456
-
-=item B<Check User>
-
-ldapadmin --action=chkuser --user=testuser
-
-ldapadmin --action=chkuser --uid=3456
-
-ldapadmin --action=chkuser --user=testuser --uid=3456
-
-=item B<Check Group>
-
-ldapadmin --action=chkgroup --group=testgroup
-
-ldapadmin --action=chkgroup --gid=3456
-
-ldapadmin --action=chkgroup --group=testgroup --gid=3456
-
-=item B<Check Public SSH keys>
-
-ldapadmin --action=chksshkey --user=testuser --sshfile=testuser.pub
-
-=item B<Check sudo role>
-
-ldapadmin --action=chksudorole --sudorole %sysops
-
-=item B<Check sudo command>
-
-ldapadmin --action=chksudocmd --sudorole %sysops --sudocmd ALL
-
-=item B<Delete User>
-
-ldapadmin --action=deluser --user=testuser
-
-ldapadmin --action=deluser --user=testuser --commit
-
-=item B<Purge User>
-
-ldapadmin --action=purgeuser --user=testuser
-
-ldapadmin --action=purgeuser --user=testuser --commit
-
-=item B<Purge Users>
-
-ldapadmin --action=purgeusers
-
-ldapadmin --action=purgeusers --commit
-
-=item B<Delete Group>
-
-ldapadmin --action=delgroup --group=testgroup
-
-ldapadmin --action=delgroup --group=testgroup --commit
-
-=item B<Delete Users from a Group>
-
-ldapadmin --action=delgroupuser --user=testuser --group=testgroup
-    
-=item B<Delete SSH Public keys>
-
-ldapadmin --action=delsshkey --user=testuser --sshkey=2
-
-ldapadmin --action=delsshkey --user=testuser --sshfile=testuser.pub
-
-=item B<Delete sudo role>
-
-ldapadmin --action=delsudorole --sudorole %test
-
-ldapadmin --action=delsudorole --sudorole %test --commit
-
-=item B<Delete sudo command>
-
-ldapadmin --action=delsudocmd --sudorole %test --sudocmd ALL
-
-=item B<Show User>
-
-ldapadmin --action=showuser --user=testuser
-
-ldapadmin --action=showuser --uid=3456
-
-=item B<Show Users>
-
-ldapadmin --action=showusers
-
-=item B<Show Group>
-
-ldapadmin --action=showgroup --group=testgroup
-
-ldapadmin --action=showgroup --gid=3456
-
-=item B<Show Groups>
-
-ldapadmin --action=showgroups
-
-=item B<Show SSH Public keys>
-
-ldapadmin --action=showsshkeys --user=testuser
-    
 =back
 
 =head1 REQUIRES
@@ -3576,6 +3455,9 @@ L<Pod::Usage>
 =head1 AUTHOR
 
 Danny Cooper - L<dannyjc@gmail.com>
+
+Michalis K - L<mihaliz@gmail.com>
+
 
 =head1 SEE ALSO
 
