@@ -140,7 +140,6 @@ my $action_modify;          # --modify=<s>  || -m=<s>
 my $action_list;            # --list=<s>    || -l=<s>
 
 my $input_user;            # --user=<s>
-my $input_old_group;       # --oldgroup=<s>
 my $input_rename_to;       # --renameto=<s>
 
 my $input_uid;             # --uid=<i>
@@ -177,8 +176,7 @@ Getopt::Long::GetOptions(
     "help|h"                => \$help,
     "man|perldoc|doc"       => \$man,
     "user|u=s"              => \$input_user,
-    "oldgroup=s"            => \$input_old_group,
-    "renameto=s"              => \$input_rename_to,
+    "renameto=s"            => \$input_rename_to,
     "uid=i"                 => \$input_uid,
     "group=s"               => \$input_group,
     "gid=i"                 => \$input_gid,
@@ -266,10 +264,9 @@ Common Options:
      --comment="COMMENT"     GECOS field of the new account
      --homedir=HOME_DIR      home directory of new account
      --gid=<GID>             id of the primary group of the new account
-     --renameto=<USER>       rename field, used when you need to rename a user
+     --renameto=<USER/GROUP> rename field, used when you need to rename a user or group
      --group=<GROUP>         name of the group
      --gid=<GID>             id of the group
-     --oldgroup=<GROUP>      name of the group to update
      --sudorole=<ROLE>       SUDO role (USER or GROUP)
      --sudocmd=<COMMAND>     commands which users can run using sudo
      --config=<FILE>         config file
@@ -302,7 +299,7 @@ Delete Actions
 
 Modify Actions
   Modify user:              ${self} -m user --user=<i> [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
-  Modify group:             ${self} -m group --oldgroup=<s> --group=<i> --gid=<s>
+  Modify group:             ${self} -m group --group=<i> [--renameto=<s> --gid=<s> ]
 
 List Actions
   List user(s):             ${self} -l user(s) [ --user=<s> --user=<i> --uid=<s> ]
@@ -1533,22 +1530,21 @@ sub modify_group {
 
     # modify a group details
     # modify_group($old_group,$group,$gid);
-    my ( $old_group, $group, $gid ) = @_;
+    my ( $rename_group, $group, $gid ) = @_;
     my $skip = 0;
 
     # check old group exists and get the old gid
-    my $old_gid = &get_id_name( $ou_groups, "cn", $old_group );
+    my $old_gid = &get_id_name( $ou_groups, "cn", $group );
     &return_message( "DEBUG", "Old gid: ${old_gid}" );
     if ( !$old_gid ) {
-        &return_message( "INFO", "${old_group} does not exist" );
+        &return_message( "INFO", "${group} does not exist" );
         return 1;
     }
-    &return_message( "DEBUG", "${old_group} exists" );
+    &return_message( "DEBUG", "${group} exists" );
 
     # did we get passed any arguments?
     if ( !$group && !$gid ) {
-        &return_message( "FATAL",
-"you need to use the switch --oldgroup=<user> with --group=<group> and/or --gid=<gid>"
+        &return_message( "FATAL", "you need to use the switch --renameto=<user> with --group=<group> and/or --gid=<gid>"
         );
     }
 
@@ -1556,55 +1552,49 @@ sub modify_group {
     if ( ( !$gid ) || ( $gid eq $old_gid ) ) {
         &return_message( "DEBUG", "Not updating gid name" );
         $skip++;
-    }
-    else {
-
+    } else {
         # check new gid does not exist
         if ( !&get_id_name( $ou_groups, "gidNumber", $gid ) ) {
             &return_message( "DEBUG", "Update of group gid" );
 
             # update gid
-            my $dn = "cn=${old_group},${ou_groups},${base}";
+            my $dn = "cn=${group},${ou_groups},${base}";
             my $result =
               $ldap->modify( $dn,
                 changes => [ 'replace' => [ 'gidNumber' => "${gid}" ] ] );
             if ( $result->code ) {
-                &return_message( "FATAL",
-                    "An error occurred binding to the LDAP server: "
-                      . ldap_error_text( $result->code ) );
+                &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                    . ldap_error_text( $result->code ) );
             }
-        }
-        else {
+        } else {
             &return_message( "WARN", "gid ${gid} already exists" );
             return 1;
         }
     }
 
-    # does new and old group name match?
-    if ( ( !$group ) || ( $group eq $old_group ) ) {
-        &return_message( "DEBUG", "Not updating group name" );
-        $skip++;
-    }
-    else {
+    if ( $rename_group ){
+        # does new and old group name match?
+        if ( ( !$group ) || ( $group eq $rename_group ) ) {
+            &return_message( "DEBUG", "Not updating group name" );
+            $skip++;
+        } else {
+            # check new group does not exist
+            if ( !&get_id_name( $ou_groups, "cn", $group ) ) {
+                &return_message( "DEBUG", "Update of group name" );
 
-        # check new group does not exist
-        if ( !&get_id_name( $ou_groups, "cn", $group ) ) {
-            &return_message( "DEBUG", "Update of group name" );
+                my $dn = "cn=${group},${ou_groups},${base}";
+                my $result =
+                  $ldap->moddn( $dn, newrdn => "cn=${rename_group}", deleteoldrdn => 1 );
 
-            my $dn = "cn=${old_group},${ou_groups},${base}";
-            my $result =
-              $ldap->moddn( $dn, newrdn => "cn=${group}", deleteoldrdn => 1 );
-
-            if ( $result->code ) {
-                &return_message( "FATAL",
-                    "An error occurred binding to the LDAP server: "
-                      . ldap_error_text( $result->code ) );
+                if ( $result->code ) {
+                    &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                        . ldap_error_text( $result->code ) );
+                }
             }
-
-        }
-        else {
-            &return_message( "WARN", "gid ${gid} already exists" );
-            return 1;
+            else {
+                &return_message( "WARN", "gid ${gid} already exists" );
+                return 1;
+            }
         }
     }
 
@@ -1658,8 +1648,7 @@ sub show_user {
     if ( $entries == 0 ) {
         &return_message( "DEBUG", "No results returned" );
         return 1;
-    }
-    elsif ( $entries == 1 ) {
+    } elsif ( $entries == 1 ) {
         my (
             $uid,         $uidNumber,     $gidNumber,
             $description, $homeDirectory, $loginShell,
@@ -3024,17 +3013,17 @@ sub check_actions {
                 }    
             }
             when ("group") {
-                if ($input_old_group) {
-                    my $result = &modify_group( $input_old_group, $input_group, $input_gid );
+                if ($input_group) {
+                    my $result = &modify_group( $input_rename_to, $input_group, $input_gid );
                     if ( !$result ) {
-                        &return_message( "SUCCESS", "Modified ${input_old_group}" );
+                        &return_message( "SUCCESS", "Modified ${input_group}" );
                         exit(0);
                     } else {
-                        &return_message( "ERROR", "Could not modify ${input_old_group}" );
+                        &return_message( "ERROR", "Could not modify ${input_group}" );
                         exit 1;
                     }
                 } else {
-                    &return_message( "FATAL", "you need to use the switch --oldgroup=<group> with --group=<group> and/or --gid=<gid>" );
+                    &return_message( "FATAL", "you need to use the switch --group=<group> with --renameto=<group> and/or --gid=<gid>" );
                 }    
             }
             when ("sudorole") {
@@ -3219,8 +3208,8 @@ Actions:
 Common Options: 
 
   [--comment="<comment>"] [--config=<config_file>] [--commit] [--defaultguid=<gid>] 
-  [--homedir=<home_dir] [--user=<user>] [--curruser=<user>] [--uid=<uid>] [--group=<group>]
-  [--gid=<gid>] [--oldgroup=<group>] [--shell=<shell>] [--sshkey=<key_number>]
+  [--homedir=<home_dir] [--user=<user>] [--uid=<uid>] [--group=<group>]
+  [--gid=<gid>] [--renameto=<user/group>] [--shell=<shell>] [--sshkey=<key_number>]
   [--sshfile=<authorized_keys>] [--sudorole=<role>] [--sudocmd=<command>]
 
 =back
@@ -3280,10 +3269,6 @@ The new user will be created using I<HOME_DIR> as the value for the user's login
 
 The login name for the user.
 
-=item B<--curruser>=I<USER>
-
-The login name for the user which is to be modified.
-
 =item B<--uid>=I<UID>
 
 The users uid
@@ -3304,9 +3289,9 @@ The name of a group.
 
 The groups ID number.
 
-=item B<--oldgroup>=I<GROUP>
+=item B<--renameto>=I<GROUP>
 
-The name of the group to be modified.
+Rename field, used when you need to rename a user or group
 
 =item B<--sshkey>=I<SSHKEY>
 
@@ -3387,7 +3372,7 @@ B<Modify Actions>
  Modify user:
     ldapadmin -m user --user=<i> [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
  Modify group:
-    ldapadmin -m group --oldgroup=<s> --group=<i> --gid=<s>
+    ldapadmin -m group --group=<i> [--renameto=<s> --gid=<s> ]
 
 B<List Actions>
  List user:
