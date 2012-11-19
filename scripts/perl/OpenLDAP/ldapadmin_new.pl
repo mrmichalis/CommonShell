@@ -139,34 +139,34 @@ my $action_delete;          # --delete=<s>  || -d=<s>
 my $action_modify;          # --modify=<s>  || -m=<s>
 my $action_list;            # --list=<s>    || -l=<s>
 
-my $input_user;            # --user=<s>
-my $input_rename_to;       # --renameto=<s>
+my $input_user;             # --user=<s>
+my $input_rename_to;        # --renameto=<s>
 
-my $input_uid;             # --uid=<i>
-my $input_group;           # --group=<s>
-my $input_gid;             # --gid=<i>
-my $input_passwd;          # --password=<s>
-my $input_shell;           # --shell=<s>
-my $input_description;     # --description="<s>" || --comment="<s>"
-my $input_homedir;         # --homedir=<s>
-my $input_default_gid;     # --defaultgid=<i>
-my $input_ssh_key_file;    # --sshfile=<s>
-my $input_ssh_key;         # --sshkey=<i>
-my $input_sudo_role;       # --sudorole=<s>
-my $input_sudo_command;    # --sudocmd="<s>"
-my $output;                # --output=csv
-my $output_filename;       # --outputfile=<s>
+my $input_uid;              # --uid=<i>
+my $input_group;            # --group=<s>
+my $input_gid;              # --gid=<i>
+my $input_passwd;           # --password=<s>
+my $input_shell;            # --shell=<s>
+my $input_description;      # --description="<s>" || --comment="<s>"
+my $input_homedir;          # --homedir=<s>
+my $input_default_gid;      # --defaultgid=<i>
+my $input_ssh_key_file;     # --sshfile=<s>
+my $input_ssh_key;          # --sshkey=<i>
+my $input_sudo_role;        # --sudorole=<s>
+my $input_sudo_command;     # --sudocmd="<s>"
+my $output;                 # --output=csv
+my $output_filename;        # --outputfile=<s>
 
-my $log_level;             # --loglevel=<i>
-my $debug;                 # --debug
-my $devdebug;              # --devdebug || -dd
+my $log_level;              # --loglevel=<i>
+my $debug;                  # --debug
+my $devdebug;               # --devdebug || -dd
 
-my $help;                  # --help || -h
-my $man;                   # --man || --doc
-my $show_version;          # --version || -v
-my $commit;                # --commit
-my $input_config;          # --config=<s>
-
+my $help;                   # --help || -h
+my $man;                    # --man || --doc
+my $show_version;           # --version || -v
+my $commit;                 # --commit
+my $input_config;           # --config=<s>
+my @opt_options = ();       # --option=KEY=VALUE || -o=KEY=VALUE
 
 
 # display mini help if no arguments given
@@ -200,7 +200,8 @@ Getopt::Long::GetOptions(
     "check|c=s"             => \$action_check,
     "delete|d=s"            => \$action_delete,
     "modify|m=s"            => \$action_modify,
-    "list|l=s"              => \$action_list
+    "list|l=s"              => \$action_list,
+    "o|option=s"            => sub { push @opt_options, $_[1] }
 );
 
 ##################################
@@ -3289,7 +3290,7 @@ The name of a group.
 
 The groups ID number.
 
-=item B<--renameto>=I<GROUP>
+=item B<--renameto>=I<USER/GROUP>
 
 Rename field, used when you need to rename a user or group
 
