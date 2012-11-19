@@ -53,7 +53,7 @@ my $hostname      = "localhost";
 my $port          = "389";
 my $show_password = "no";
 my $default_shell = "bash";
-my $uri           = "ldapi:///";
+my $uri           = 'ldapi://';
 
 # the default system group to put users into.
 # this group does not exist in ldap!
@@ -1446,7 +1446,6 @@ sub modify_user {
                 &return_message( "DEBUG", "Results Returned: $gentries" );
                 if ( $gentries == 0 ) {
                     &return_message( "DEBUG", "No results returned WTF!" );
-                    return 1;
                 }
                 else {
                     print "\n";

@@ -56,7 +56,7 @@ my $hostname      = "localhost";
 my $port          = "389";
 my $show_password = "no";
 my $default_shell = "bash";
-my $uri           = "ldapi:///";
+my $uri           = 'ldapi://';
 
 # the default system group to put users into.
 # this group does not exist in ldap!
@@ -140,10 +140,11 @@ my $action_modify;          # --modify=<s>  || -m=<s>
 my $action_list;            # --list=<s>    || -l=<s>
 
 my $input_user;            # --user=<s>
-my $input_curr_user;       # --curruser=<s>
+my $input_old_group;       # --oldgroup=<s>
+my $input_rename_to;       # --renameto=<s>
+
 my $input_uid;             # --uid=<i>
 my $input_group;           # --group=<s>
-my $input_old_group;       # --oldgroup=<s>
 my $input_gid;             # --gid=<i>
 my $input_passwd;          # --password=<s>
 my $input_shell;           # --shell=<s>
@@ -176,10 +177,10 @@ Getopt::Long::GetOptions(
     "help|h"                => \$help,
     "man|perldoc|doc"       => \$man,
     "user|u=s"              => \$input_user,
-    "curruser=s"            => \$input_curr_user,
+    "oldgroup=s"            => \$input_old_group,
+    "renameto=s"              => \$input_rename_to,
     "uid=i"                 => \$input_uid,
     "group=s"               => \$input_group,
-    "oldgroup=s"            => \$input_old_group,
     "gid=i"                 => \$input_gid,
     "password=s"            => \$input_passwd,
     "shell=s"               => \$input_shell,
@@ -261,17 +262,17 @@ Actions:
          --version           output version information and exit
 
 Common Options:
-     --user=<USER>       login user name
-     --comment="COMMENT" GECOS field of the new account
-     --homedir=HOME_DIR  home directory of new account
-     --gid=<GID>         id of the primary group of the new account
-     --curruser=<USER>   login of the current user name to update
-     --group=<GROUP>     name of the group
-     --gid=<GID>         id of the group
-     --oldgroup=<GROUP>  name of the group to update
-     --sudorole=<ROLE>   SUDO role (USER or GROUP)
-     --sudocmd=<COMMAND> commands which users can run using sudo
-     --config=<FILE>     config file
+     --user=<USER>           login user name
+     --comment="COMMENT"     GECOS field of the new account
+     --homedir=HOME_DIR      home directory of new account
+     --gid=<GID>             id of the primary group of the new account
+     --renameto=<USER>       rename field, used when you need to rename a user
+     --group=<GROUP>         name of the group
+     --gid=<GID>             id of the group
+     --oldgroup=<GROUP>      name of the group to update
+     --sudorole=<ROLE>       SUDO role (USER or GROUP)
+     --sudocmd=<COMMAND>     commands which users can run using sudo
+     --config=<FILE>         config file
 
 Examples:
 
@@ -293,21 +294,20 @@ Check Actions
 Delete Actions
   Delete user:              ${self} -d user --user=<s> [ --commit ]
   Delete user from group:   ${self} -d user --user=<s> --group=<s>
+  Purge User(s):            ${self} -d purgeuser(s) --user=<s> [ --commit ]
   Delete a group:           ${self} -d group --group=<s> [ --commit ]
   Delete SSH key:           ${self} -d sshkey --user=<s> --sshkey=<i> or --sshfile=<s>
   Delete SUDO role:         ${self} -d sudorole --sudorole=<s> [ --commit ]
-  Delete SUDO command:      ${self} -d sudocmd --sudorole=<s> --sudocmd=<s>    
+  Delete SUDO command:      ${self} -d sudocmd --sudorole=<s> --sudocmd=<s>
 
 Modify Actions
-  Modify user:              ${self} -m user --curruser=<s> --user=<i> [ --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+  Modify user:              ${self} -m user --user=<i> [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
   Modify group:             ${self} -m group --oldgroup=<s> --group=<i> --gid=<s>
 
 List Actions
-  List user:                ${self} -l user --user=<s> --user=<i> [ --uid=<s> ]
-  List all users:           ${self} -l users
-  List group:               ${self} -l group [ --gid=<i> ]
-  List groups:              ${self} -l groups
-  List SSH keys:            ${self} -l sshkeys --user=<s>
+  List user(s):             ${self} -l user(s) [ --user=<s> --user=<i> --uid=<s> ]
+  List group(s):            ${self} -l group(s) [ --gid=<i> ]
+  List user's SSH keys:     ${self} -l sshkeys --user=<s>
 _END_
     exit;
 
@@ -405,8 +405,7 @@ sub add_user {
     &return_message( "DEBUG", "Using uid=$params->{uid}" );
 
     if ( !$params->{user} ) {
-        &return_message( "WARN",
-            "What happened to the user, they went missing :O" );
+        &return_message( "WARN", "What happened to the user, they went missing :O" );
         return 1;
     }
 
@@ -440,12 +439,10 @@ sub add_user {
 
         # do a basic path check - start with /  and contains /A-Za-z0-9
         if ( $params->{home} !~ /^\/[\/A-Za-z0-9]*$/ ) {
-            &return_message( "WARN",
-                "Path contains non alphanumeric characters: $params->{home}" );
+            &return_message( "WARN", "Path contains non alphanumeric characters: $params->{home}" );
             return 1;
         }
-        &return_message( "WARN",
-            "Overriding home directory with $params->{home}" );
+        &return_message( "WARN", "Overriding home directory with $params->{home}" );
     }
     else {
         $params->{home} = "/home/$params->{user}";
@@ -473,8 +470,7 @@ sub add_user {
 
     ## check pass
     if ( $params->{pass} ) {
-        &return_message( "WARN",
-            "WTF: Password check needs to be written!!!!" );
+        &return_message( "WARN", "WTF: Password check needs to be written!!!!" );
     }
 
     &return_message( "INFO", "Adding $params->{user} to LDAP" );
@@ -662,8 +658,7 @@ sub add_group_user {
         scope  => "one"
     );
     if ( $result->code ) {
-        &return_message( "FATAL",
-            "An error occurred binding to the LDAP server: "
+        &return_message( "FATAL", "An error occurred binding to the LDAP server: "
               . ldap_error_text( $result->code ) );
     }
 
@@ -844,8 +839,7 @@ sub delete_user {
     if ($commit) {
 
         # remove user from ou_groups
-        &return_message( "DEBUG",
-            "Checking which groups to remove ${user} from" );
+        &return_message( "DEBUG", "Checking which groups to remove ${user} from" );
 
         my $filter = "(&(objectClass=posixGroup)(memberUid=${user}))";
         &return_message( "DEBUG", "Base: ${ou_groups},${base}" );
@@ -1352,66 +1346,61 @@ sub modify_user {
     # Attributes that need to be able to be modified with moduser action are:
     # cn, sn, description (=sn=cn), gidNumber(notPossible), homeDirectory, loginShell, User Name (uid), uidNumber
 
-    my ( $curr_user, $params ) = @_;    
+    my ( $rename_user, $params ) = @_;    
     my $skip = 0;
     my @whatToChange;
     my @ReplaceArray;
-    my $dn = "uid=${curr_user},${ou_users},${base}";
+    my $dn = "uid=$params->{user},${ou_users},${base}";
     &return_message( "DEV", "\$params\n" . Dumper($params) );
 
-    # check old user exists
-    my $old_uid = &get_id_name( $ou_users, "uid", $curr_user );
-    &return_message( "DEBUG", "Old user: ${old_uid}" );
+    # check user exists
+    #my $old_uid = &get_id_name( $ou_users, "uid", $curr_user );
+    my $old_uid = &get_id_name( $ou_users, "uid", $params->{user} );
+    &return_message( "DEBUG", "Old user: $params->{user}" );
     if ( !$old_uid ) {
-        &return_message( "INFO", "${old_uid} does not exist" );
+        &return_message( "INFO", "$params->{user} does not exist" );
         return 1;
     }
-    &return_message( "DEBUG", "${old_uid} exists" );
+    &return_message( "DEBUG", "$params->{user} exists" );
 
  
-    if ( $params->{user} ) {
+    if ( $rename_user ) {
        # check that the new user name is not reserved
-        if ( grep /^$params->{user}$/, @reserved_users ) {
-            &return_message( "WARN",
-                "$params->{user} is reserved please choose a different user name" );
+        if ( grep /^${rename_user}$/, @reserved_users ) {
+            &return_message( "WARN", "${rename_user} is reserved please choose a different user name" );
             return 1;
         }
 
         # check new user
         # if new user, then check its free
-        my $old_uid = &get_id_name( $ou_users, "uid", $params->{user} );
-        if ($old_uid) {
-            &return_message( "WARN", 
-                "$params->{user} is already taken by ${old_uid}" );
+        my $new_uid = &get_id_name( $ou_users, "uid", $rename_user );
+        if ($new_uid) {
+            &return_message( "WARN", "${rename_user} is already taken by ${new_uid}" );
             return 1;
         }
 
         # if we are updating the user name    
         # now updated the user name, required to be done last as we are using `moddn`
         # does new and old user name match?
-        if ( ( !$params->{user} ) || ( $params->{user} eq $curr_user ) ) {
+        if ( ( !$rename_user ) || ( $params->{user} eq $rename_user ) ) {
             &return_message( "DEBUG", "Not updating user name" );
             $skip++;
-        }
-        else {
+        } else {
 
             # check new user does not exist
-            if ( !&get_id_name( $ou_users, "uid", $params->{user} ) ) {
+            if ( !&get_id_name( $ou_users, "uid", $rename_user ) ) {
                 # modify the user with new user name
                 &return_message( "DEBUG", "Update of user name" );
                 my $result =
-                  $ldap->moddn( $dn, newrdn => "uid=$params->{user}", deleteoldrdn => 1 );
+                  $ldap->moddn( $dn, newrdn => "uid=${rename_user}", deleteoldrdn => 1 );
                 if ( $result->code ) {
-                    &return_message( "FATAL",
-                        "An error occurred binding to the LDAP server: "
-                          . ldap_error_text( $result->code ) );
-                } else {
-                    $dn = "uid=$params->{user}, ${ou_users}, ${base}";
+                    &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                        . ldap_error_text( $result->code ) );
                 }
 
                 # update of user group
                 &return_message( "DEBUG", "Update of user group" );
-                my $filter = "(&(objectClass=posixGroup)(memberUid=${curr_user}))";
+                my $filter = "(&(objectClass=posixGroup)(memberUid=$params->{user}))";
                 &return_message( "DEBUG", "Base: ${ou_groups},${base}" );
                 &return_message( "DEBUG", "Search filter: ${filter}" );
                 my $gsearchresult = $ldap->search(
@@ -1420,30 +1409,26 @@ sub modify_user {
                     scope  => "one"
                 );
                 if ( $gsearchresult->code ) {
-                    &return_message( "FATAL",
-                        "An error occurred binding to the LDAP server: "
-                          . ldap_error_text( $gsearchresult->code ) );
+                    &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                        . ldap_error_text( $gsearchresult->code ) );
                 }
                 my $gentries = $gsearchresult->entries;                
                 &return_message( "DEBUG", "Results Returned: $gentries" );
                 if ( $gentries == 0 ) {
                     &return_message( "DEBUG", "No results returned WTF!" );
-                    return 1;
-                }
-                else {
+                } else {
                     print "\n";
                     print "  Group\t\t\tGID\n";
                     print "  ===========================\n";
                     my $i = 1;
                     foreach my $gentry ( $gsearchresult->entries ) {
-
                         # prepare list of groups for sudoers check
                         #$sudo_groups[$i] = "%" . $gentry->get_value('cn');
                         print "  "
                           . $gentry->get_value('cn') . "\t\t"
                           . $gentry->get_value('gidNumber') . "\n";
-                        &delete_group_user( $curr_user, $gentry->get_value('cn') );
-                        &add_group_user( $params->{user}, $gentry->get_value('cn') );
+                        &delete_group_user( $params->{user}, $gentry->get_value('cn') );
+                        &add_group_user( $rename_user, $gentry->get_value('cn') );
                         $i++;
                     }
                     print "\n";
@@ -1454,7 +1439,7 @@ sub modify_user {
                 return 1;
             }
         } 
-    }
+      }
 
     if ( $params->{uid} ){
         # does new and old group name match?
@@ -1463,7 +1448,6 @@ sub modify_user {
             $skip++;
         }
         else {
-
             # check new uid does not exist
             # check new uid
             # if new uid, then check its free        
@@ -1749,8 +1733,7 @@ sub show_user {
         if ( $gentries == 0 ) {
             &return_message( "DEBUG", "No results returned WTF!" );
             return 1;
-        }
-        else {
+        } else {
             print "\n";
             print "  Group\t\t\tGID\n";
             print "  ===========================\n";
@@ -1774,8 +1757,7 @@ sub show_user {
                 $filter .= "(cn=${sudo_groups[$i]})";
             }
             $filter .= "))";
-        }
-        else {
+        } else {
             &return_message( "FATAL",
                 "User does not belong to any groups WTF!" );
         }
@@ -1800,9 +1782,8 @@ sub show_user {
         if ( $sentries == 0 ) {
             print "  $uid does not belong to any sudoers groups\n\n";
             &return_message( "DEBUG", "No results returned WTF!" );
-            return 0;
-        }
-        else {
+            return 0;        
+        } else {
             foreach my $sentry ( $ssearchresult->entries ) {
                 print "  " . $sentry->get_value('cn') . "\n";
             }
@@ -1815,8 +1796,7 @@ sub show_user {
         &return_message( "FATAL",
 "More then one result returned for ${filter}, please fix ${ou_users}"
         );
-    }
-    else {
+    } else {
         &return_message( "FATAL", "Failed checking: ${filter}" );
     }
 
@@ -1830,8 +1810,7 @@ sub show_users {
     my ( @users, $filter );
     if ($disabled) {
         $filter = "(&(objectClass=posixAccount)(pwdLockout=TRUE))";
-    }
-    else {
+    } else {
         $filter = "(&(objectClass=posixAccount)(pwdLockout=FALSE))";
     }
 
@@ -1851,8 +1830,7 @@ sub show_users {
     &return_message( "DEBUG", "Results Returned: $entries" );
     if ( $entries == 0 ) {
         &return_message( "DEBUG", "No results returned" );
-    }
-    else {
+    } else {
         foreach my $entry ( $searchresult->entries ) {
             &return_message( "DEV", "$entry:\n" . Dumper($entry) );
             my $locked;
@@ -1885,8 +1863,7 @@ sub show_users {
                 $users[$i][0], $users[$i][1], $users[$i][2] );
             print "\n";
         }
-    }
-    else {
+    } else {
         print "  No users are in LDAP\n";
     }
     print "\n";
@@ -1929,8 +1906,7 @@ sub show_group {
         &return_message( "DEBUG", "Results Returned: $entries" );
         if ( $entries == 0 ) {
             &return_message( "DEBUG", "No results returned" );
-        }
-        else {
+        } else {
             &return_message( "DEBUG", "Processing users in the group" );
             foreach my $entry ( $searchresult->entries ) {
                 push( @users, $entry->get_value('memberUid') );
@@ -1940,8 +1916,7 @@ sub show_group {
 
         }
 
-    }
-    else {
+    } else {
 
    # we are only going to scan the $ou_users with $standard_gid and build a list
         my $filter = "(&(objectClass=posixAccount)(gidNumber=${standard_gid}))";
@@ -1963,8 +1938,7 @@ sub show_group {
         &return_message( "DEBUG", "Results Returned: $entries" );
         if ( $entries == 0 ) {
             &return_message( "DEBUG", "No results returned" );
-        }
-        else {
+        } else {
             foreach my $entry ( $searchresult->entries ) {
                 push( @users, $entry->get_value('uid') );
             }
@@ -1979,8 +1953,7 @@ sub show_group {
         for ( my $i = 0 ; $i < $user_count ; $i++ ) {
             print "  $users[$i]\n";
         }
-    }
-    else {
+    } else {
         print "  No users are in this group\n";
     }
     print "\n";
@@ -2009,8 +1982,7 @@ sub show_groups {
     &return_message( "DEBUG", "Results Returned: $entries" );
     if ( $entries == 0 ) {
         &return_message( "DEBUG", "No results returned" );
-    }
-    else {
+    } else {
         &return_message( "DEBUG", "Processing list of groups" );
         printf( "  %8s %25s\n", "group", "gid" );
         print "  ==================================\n";
@@ -2311,11 +2283,9 @@ sub get_id_name {
             $objectclass = "posixAccount";
             if ( $attribute eq "uid" ) {
                 $return_attribute = "uidNumber";
-            }
-            elsif ( $attribute eq "uidNumber" ) {
+            } elsif ( $attribute eq "uidNumber" ) {
                 $return_attribute = "uid";
-            }
-            else {
+            } else {
                 &return_message( "FATAL", "$attribute is not defined" );
             }
         }
@@ -2324,11 +2294,9 @@ sub get_id_name {
             $objectclass = "posixGroup";
             if ( $attribute eq "cn" ) {
                 $return_attribute = "gidNumber";
-            }
-            elsif ( $attribute eq "gidNumber" ) {
+            } elsif ( $attribute eq "gidNumber" ) {
                 $return_attribute = "cn";
-            }
-            else {
+            } else {
                 &return_message( "FATAL", "$attribute is not defined" );
             }
         }
@@ -2466,8 +2434,7 @@ sub load_config_variables {
 
     if ( !$input_config ) {
         $config_file = &locate_file( $config_file, @config_locations );
-    }
-    else {
+    } else {
         $config_file = &locate_file($input_config);
     }
 
@@ -2476,8 +2443,7 @@ sub load_config_variables {
         &return_message( "INFO",
             "No config file to load, using built in defaults" );
         return 1;
-    }
-    else {
+    } else {
         $file_hash = &read_text_config($config_file);
         &return_message( "INFO", "Loading configuration from $config_file" );
     }
@@ -2685,7 +2651,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switches --sudorole=<role name> --sudocmd=<command>");
-                }                
+                }    
             }
             when ("groupuser") {
                 if ( $input_user && $input_group ) {
@@ -2700,15 +2666,14 @@ sub check_actions {
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user> and --group=<group>" );
                     exit 1;
-                }                
+                }    
             }
             default {
                 &return_message( "FATAL", "The shit hit the fan: '${action_add}' is not a vaild action" );
                 exit 1;
             }
         }
-    } 
-    elsif ( de($action_check) ) {
+    } elsif ( de($action_check) ) {
         # ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );       
         given ($action_check) {            
             when ("user") {
@@ -2747,7 +2712,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --uid=<uid> and/or --user=<user name>" );
-                }            
+                }
             }
             when ("group") {
                 if ( $input_gid && !$input_group ) {
@@ -2785,7 +2750,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --uid=<uid> and/or --user=<user name>" );
-                }            
+                }
             }
             when ("sshkey") {
                 if ( $input_user && $input_ssh_key_file ) {
@@ -2798,7 +2763,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user> or --sshfile=<authorized_keys>" );
-                }               
+                }
             }
             when ("sudorole") {
                 if ($input_sudo_role) {
@@ -2811,7 +2776,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --sudorole=<role name> for a group use the prefix %" );
-                }               
+                }   
             }
             when ("uid") {
                 if ( $input_uid && !$input_gid ) {
@@ -2840,7 +2805,7 @@ sub check_actions {
                     &return_message( "FATAL", "you must only use one switch --uid=<uid> or --gid=<gid>" );
                 } else {
                     &return_message( "FATAL", "you need to use the switch --uid=<uid> or --gid=<gid>" );
-                }                
+                }
             }
             when ("name") {
                 if ( $input_user && !$input_group ) {
@@ -2879,8 +2844,7 @@ sub check_actions {
                 exit 1;
             }
         }    
-    }
-    elsif ( de($action_delete) ) {
+    } elsif ( de($action_delete) ) {
         # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
         given ($action_delete) {
             when ("user") {
@@ -2891,7 +2855,7 @@ sub check_actions {
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user>" );
                     exit 1;
-                }                
+                }
             }
             when ("group") {
                 if ($input_group) {
@@ -2931,7 +2895,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user> --sshkey=<number> or --sshfile=<file>" );
-                }                
+                }    
             }
             when ("sudorole") {
                 if ($input_sudo_role) {
@@ -2945,7 +2909,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --sudorole=<role name> for a group use the prefix %" );
-                }                
+                }    
             }
             when ("sudocmd") {
                 if ( $input_sudo_role && $input_sudo_command ) {
@@ -2959,7 +2923,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switches --sudorole=<role name> --sudocmd=<command>" );
-                }                
+                }    
             }
             when ("groupuser") {
                 if ( $input_user && $input_group ) {
@@ -2978,7 +2942,7 @@ sub check_actions {
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user> and --group=<group>" );
                     exit 1;
-                }                
+                }    
             }
             when ("purgeuser") {
                 if ($input_user) {
@@ -2997,7 +2961,7 @@ sub check_actions {
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user>" );
                     exit 1;
-                }               
+                }   
             }
             when ("purgeusers") {
                 my $result = &purge_users;
@@ -3007,7 +2971,7 @@ sub check_actions {
                     print "no users to purge\n";
                 } elsif ( $result == 2 ) {
                     &return_message( "WARN", "To purge users please add the switch --commit" );
-                }                
+                }    
             }
             when ("rmuser") {
                 if ($input_user) {
@@ -3031,32 +2995,33 @@ sub check_actions {
                 exit 1;
             }
         }
-    }
-    elsif ( de($action_modify) ) {
+    } elsif ( de($action_modify) ) {
         # ( "user", "group", "sudorole" );
         given ($action_modify) {
             when ("user") {
-                if ($input_curr_user) {
-                    my $details;
-                    $details->{"user"}        = $input_user;
-                    $details->{"uid"}         = $input_uid;
-                    $details->{"gid"}         = $input_default_gid;
-                    $details->{"description"} = $input_description;
-                    $details->{"home"}        = $input_homedir;
-                    $details->{"shell"}       = $input_shell;
-                    $details->{"pass"}        = $input_passwd;
-                    my $result = &modify_user( $input_curr_user, $details );
+                #if ($input_curr_user) {
+                my $details;
+                $details->{"user"}        = $input_user;
+                $details->{"uid"}         = $input_uid;
+                $details->{"gid"}         = $input_default_gid;
+                $details->{"description"} = $input_description;
+                $details->{"home"}        = $input_homedir;
+                $details->{"shell"}       = $input_shell;
+                $details->{"pass"}        = $input_passwd;                    
+                
+                if ($details->{"user"}) {                    
+                    my $result = &modify_user( $input_rename_to, $details );
 
                     if ( !$result ) {
-                        &return_message( "SUCCESS", "Modified ${input_curr_user}" );
+                        &return_message( "SUCCESS", "Modified $details->{'user'}" );
                         exit(0);
                     } else {
-                        &return_message( "ERROR", "Could not modify ${input_curr_user}" );
+                        &return_message( "ERROR", "Could not modify $details->{'user'}" );
                         exit 1;
                     }
                 } else {
-                    &return_message( "FATAL", "you need to use the switch --curruser=<user> with --user=<user> and/or --uid=<uid> and other user switches!!!" );
-                }                
+                    &return_message( "FATAL", "you need to use the switch --user=<user> with --renameto=<user> and/or --uid=<uid> and other user switches!!!" );
+                }    
             }
             when ("group") {
                 if ($input_old_group) {
@@ -3070,7 +3035,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --oldgroup=<group> with --group=<group> and/or --gid=<gid>" );
-                }                
+                }    
             }
             when ("sudorole") {
                 print "modify=sudorole: is in progress! - feedback will be highly appreciated."
@@ -3078,10 +3043,9 @@ sub check_actions {
             default {
                 &return_message( "FATAL", "The shit hit the fan: '${action_delete}' is not a vaild action" );
                 exit 1;
-            }            
+            }
         }
-    }
-    elsif ( de($action_list) ) {
+    } elsif ( de($action_list) ) {
         # ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
         given ($action_list) {
             when ("user") {
@@ -3098,7 +3062,7 @@ sub check_actions {
                     &return_message( "FATAL", "you must only use one switch --user=<user> or --uid=<uid>" );
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user> or --uid=<uid>" );
-                }                
+                }    
             }
             when ("group") {
                 if ( ( !$input_group && $input_gid ) || ( $input_group && !$input_gid ) ) {
@@ -3114,7 +3078,7 @@ sub check_actions {
                     &return_message( "FATAL", "you must only use one switch --group=<group> or --gid=<gid>" );
                 } else {
                     &return_message( "FATAL", "you need to use the switch --group=<group> or --gid=<gid>" );
-                }                
+                }    
             }
             when ("users") {
                 &show_users;                
@@ -3127,7 +3091,7 @@ sub check_actions {
                     &show_ssh_public_keys($input_user);
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user>" );
-                }                
+                }    
             }
             when ("disabledusers") {
                 &show_users("disabled");
@@ -3143,7 +3107,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<USER>" );
-                }                
+                }    
             }
             default {
                 &return_message( "FATAL", "The shit hit the fan: '${action_list}' is not a vaild action" );
@@ -3217,8 +3181,7 @@ if (de($action_add)
 if ( grep /^[Yy][Ee][Ss]$/, $auto_commit ) {
     $commit = 1;
     &return_message( "DEBUG", "Auto commit is enabled" );
-}
-else {
+} else {
     &return_message( "DEBUG", "Auto commit is disabled" );
 }
 
@@ -3422,7 +3385,7 @@ B<Delete Actions>
 
 B<Modify Actions>
  Modify user:
-    ldapadmin -m user --curruser=<s> --user=<i> [ --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+    ldapadmin -m user --user=<i> [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
  Modify group:
     ldapadmin -m group --oldgroup=<s> --group=<i> --gid=<s>
 
