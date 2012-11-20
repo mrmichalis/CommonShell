@@ -765,9 +765,9 @@ sub add_ssh_public_key {
       }     
       my @entry           = $result->entries;
       my @keys_ldap       = $entry[0]->get_value('sshPublicKey');
-      my $empty_keys_ldap_count = @keys_ldap;
-      if ( $empty_keys_ldap_count == 1 ) {
-          if ( $keys_ldap[0] eq '' ) { $empty_keys_ldap_count = 0; }
+      my $has_key = @keys_ldap;
+      if ( $has_key == 1 ) {
+          if ( $keys_ldap[0] eq '' ) { $has_key = 0; }
       }
 
       #need to add the unmatched keys to LDAP
@@ -775,10 +775,12 @@ sub add_ssh_public_key {
           my $dn = "uid=${user},${ou_users},${base}";
           my $result;
           
-          if ( $empty_keys_ldap_count == 0 ) {
-            $result = $ldap->modify( $dn, changes => [ 'replace' => [ 'sshPublicKey' => $hash{no_match} ] ] );            
+          if ( $has_key == 0 ) {
+            $result = $ldap->modify( $dn, changes => [ 'replace' => [ 'sshPublicKey' => $hash{no_match} ] ] );
+            &return_message( "INFO", "SSH Key replaced");
           } else {
             $result =  $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
+            &return_message( "INFO", "SSH Key added");
           }
 
           if ( $result->code ) {
@@ -786,7 +788,7 @@ sub add_ssh_public_key {
                 . ldap_error_text( $result->code ) );
           }
       } else {
-          print localtime()." INFO\tKey already exists\n";
+          &return_message( "WARN", "Not re-adding, key already in");
       }
       return 0;
     } else { 
