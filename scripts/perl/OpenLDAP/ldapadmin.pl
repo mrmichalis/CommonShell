@@ -747,28 +747,51 @@ sub add_ssh_public_key {
     my ( $user, $file ) = @_;
     if (!&pre_process_ssh_key ($file)) {
 
-        my %hash           = &match_ssh_public_key( $user, $file );
-        my $match_count    = @{ $hash{match} };
-        my $no_match_count = @{ $hash{no_match} };
+      my %hash           = &match_ssh_public_key( $user, $file );
+      my $match_count    = @{ $hash{match} };
+      my $no_match_count = @{ $hash{no_match} };
 
-        # need to add the unmatched keys to LDAP
-        if ( $no_match_count > 0 ) {
-            my $dn = "uid=${user},${ou_users},${base}";
-            my $result = 
-            $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
-            if ( $result->code ) {
-                &return_message( "FATAL",
-                    "An error occurred binding to the LDAP server: "
-                      . ldap_error_text( $result->code ) );
-            }
-        } else {
-            print localtime()." INFO\tKey already exists\n";
-        }
-        return 0;
+      # check if the key is blank
+      my $filter = "(&(objectClass=posixAccount)(uid=${user}))";
+      my $result = $ldap->search(
+        base   => "${ou_users},${base}",
+        filter => "${filter}",
+        attrs  => ['sshPublicKey'],
+        scope  => "one"
+      );
+      if ( $result->code ) {
+        &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+              . ldap_error_text( $result->code ) );
+      }     
+      my @entry           = $result->entries;
+      my @keys_ldap       = $entry[0]->get_value('sshPublicKey');
+      my $empty_keys_ldap_count = @keys_ldap;
+      if ( $empty_keys_ldap_count == 1 ) {
+          if ( $keys_ldap[0] eq '' ) { $empty_keys_ldap_count = 0; }
+      }
+
+      #need to add the unmatched keys to LDAP
+      if ( $no_match_count > 0 ) {
+          my $dn = "uid=${user},${ou_users},${base}";
+          my $result;
+          
+          if ( $empty_keys_ldap_count == 0 ) {
+            $result = $ldap->modify( $dn, changes => [ 'replace' => [ 'sshPublicKey' => $hash{no_match} ] ] );            
+          } else {
+            $result =  $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
+          }
+
+          if ( $result->code ) {
+              &return_message( "FATAL","An error occurred binding to the LDAP server: "
+                . ldap_error_text( $result->code ) );
+          }
+      } else {
+          print localtime()." INFO\tKey already exists\n";
+      }
+      return 0;
     } else { 
         return 1; 
     }
-    
 }
 
 ####################

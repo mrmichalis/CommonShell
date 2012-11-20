@@ -168,7 +168,6 @@ my $commit;                 # --commit
 my $input_config;           # --config=<s>
 my @opt_options = ();       # --option=KEY=VALUE || -o=KEY=VALUE
 
-
 # display mini help if no arguments given
 pod2usage( -exitval => 2, -input => $0 ) if ( ( @ARGV == 0 ) && ( -t STDIN ) );
 
@@ -722,28 +721,51 @@ sub add_ssh_public_key {
     my ( $user, $file ) = @_;
     if (!&pre_process_ssh_key ($file)) {
 
-        my %hash           = &match_ssh_public_key( $user, $file );
-        my $match_count    = @{ $hash{match} };
-        my $no_match_count = @{ $hash{no_match} };
+      my %hash           = &match_ssh_public_key( $user, $file );
+      my $match_count    = @{ $hash{match} };
+      my $no_match_count = @{ $hash{no_match} };
 
-        # need to add the unmatched keys to LDAP
-        if ( $no_match_count > 0 ) {
-            my $dn = "uid=${user},${ou_users},${base}";
-            my $result = 
-            $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
-            if ( $result->code ) {
-                &return_message( "FATAL",
-                    "An error occurred binding to the LDAP server: "
-                      . ldap_error_text( $result->code ) );
-            }
-        } else {
-            print localtime()." INFO\tKey already exists\n";
-        }
-        return 0;
+      # check if the key is blank
+      my $filter = "(&(objectClass=posixAccount)(uid=${user}))";
+      my $result = $ldap->search(
+        base   => "${ou_users},${base}",
+        filter => "${filter}",
+        attrs  => ['sshPublicKey'],
+        scope  => "one"
+      );
+      if ( $result->code ) {
+        &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+              . ldap_error_text( $result->code ) );
+      }     
+      my @entry           = $result->entries;
+      my @keys_ldap       = $entry[0]->get_value('sshPublicKey');
+      my $empty_keys_ldap_count = @keys_ldap;
+      if ( $empty_keys_ldap_count == 1 ) {
+          if ( $keys_ldap[0] eq '' ) { $empty_keys_ldap_count = 0; }
+      }
+
+      #need to add the unmatched keys to LDAP
+      if ( $no_match_count > 0 ) {
+          my $dn = "uid=${user},${ou_users},${base}";
+          my $result;
+          
+          if ( $empty_keys_ldap_count == 0 ) {
+            $result = $ldap->modify( $dn, changes => [ 'replace' => [ 'sshPublicKey' => $hash{no_match} ] ] );            
+          } else {
+            $result =  $ldap->modify( $dn, add => { 'sshPublicKey' => $hash{no_match} } );
+          }
+
+          if ( $result->code ) {
+              &return_message( "FATAL","An error occurred binding to the LDAP server: "
+                . ldap_error_text( $result->code ) );
+          }
+      } else {
+          print localtime()." INFO\tKey already exists\n";
+      }
+      return 0;
     } else { 
         return 1; 
     }
-    
 }
 
 ####################
@@ -1504,8 +1526,7 @@ sub modify_user {
 
     ## modify description
     if ( $params->{description} ) {
-        &return_message( "WARN",
-            "Overriding sn,cn,description with $params->{description}" );
+        &return_message( "WARN", "Overriding sn,cn,description with $params->{description}" );
         undef @ReplaceArray;
         @ReplaceArray = ( 
             'sn', "$params->{description}",
@@ -1513,7 +1534,25 @@ sub modify_user {
             'description', "$params->{description}"
             );
         &LDAP_modify( $dn, 'replace', \@ReplaceArray );
-    }    
+    }
+    ## modify -option=KEY=VALUE [SN, CN]
+    if ( de(@opt_options) ) {
+      my @valid_schema = ("sn","cn");
+      foreach my $opt (@opt_options) {
+        my ($var,$val) = ($opt =~ /^([^=]+)=(.*)$/);
+        die "invalid value for --option: $opt\n" if !defined $val;
+        #set_config_option($var, $val, '');
+        if ( grep /^${var}$/, @valid_schema ) {
+          &return_message( "WARN", "Overriding $var with $val" );
+            undef @ReplaceArray;
+            @ReplaceArray = ( "$var", "$val" );
+            &LDAP_modify( $dn, 'replace', \@ReplaceArray );          
+        } else {
+            &return_message( "WARN", "${var} is not allowed please choose a valid schema" );
+            return 1;
+        }
+      }
+    }
 
     # check if we need to do any thing?
     if ( $skip == 2 ) {
@@ -2251,7 +2290,6 @@ sub match_ssh_public_key {
         &return_message( "DEV", "%hash:\n" . Dumper(%hash) );
         return %hash;
     }
-
 }
 
 ##################
@@ -2989,7 +3027,6 @@ sub check_actions {
         # ( "user", "group", "sudorole" );
         given ($action_modify) {
             when ("user") {
-                #if ($input_curr_user) {
                 my $details;
                 $details->{"user"}        = $input_user;
                 $details->{"uid"}         = $input_uid;
@@ -3011,7 +3048,7 @@ sub check_actions {
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user> with --renameto=<user> and/or --uid=<uid> and other user switches!!!" );
-                }    
+                }
             }
             when ("group") {
                 if ($input_group) {
