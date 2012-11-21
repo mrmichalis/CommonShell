@@ -248,28 +248,29 @@ Usage: ${self} [ACTION] [OPTION...]
 First option must be a mode specifier:
 
 Actions:
-     -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
-     -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
-     -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"]
-     -m, --modify            modify ["user", "group", "sudorole"]
-     -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
-     -h, --help              display this help and exit
-         --man               display man page
-         --debug             increase verbosity level by one
-         --loglevel=<LEVEL>  level is between 1-6, 1 being debug
-         --version           output version information and exit
+  -a, --add                 add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
+  -c, --check               check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+  -d, --delete              delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
+  -m, --modify              modify ["user", "group", "sudorole"]
+  -l, --list                list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+  -h, --help                display this help and exit
+      --man                 display man page
+      --debug               increase verbosity level by one
+      --loglevel=<LEVEL>    level is between 1-6, 1 being debug
+      --version             output version information and exit
 
 Common Options:
-     --user=<USER>           login user name
-     --comment="COMMENT"     GECOS field of the new account
-     --homedir=HOME_DIR      home directory of new account
-     --gid=<GID>             id of the primary group of the new account
-     --renameto=<USER/GROUP> rename field, used when you need to rename a user or group
-     --group=<GROUP>         name of the group
-     --gid=<GID>             id of the group
-     --sudorole=<ROLE>       SUDO role (USER or GROUP)
-     --sudocmd=<COMMAND>     commands which users can run using sudo
-     --config=<FILE>         config file
+  --user=<USER>             login user name
+  --comment="COMMENT"       GECOS field of the new account
+  --homedir=HOME_DIR        home directory of new account
+  --gid=<GID>               id of the primary group of the new account
+  --renameto=<USER/GROUP>   rename field, used when you need to rename a user or group
+  --group=<GROUP>           name of the group
+  --gid=<GID>               id of the group
+  --sudorole=<ROLE>         SUDO role (USER or GROUP)
+  --sudocmd=<COMMAND>       commands which users can run using sudo
+  --config=<FILE>           config file
+
 
 Examples:
 
@@ -290,9 +291,9 @@ Check Actions
   
 Delete Actions
   Disable user:             ${self} -d user --user=<s>
-  Delete user:              ${self} -d rmuser --user=<s> [ -- commit ]
-  Delete user from group:   ${self} -d user --user=<s> --group=<s>
+  Delete user:              ${self} -d rm --user=<s> [ -- commit ]
   Purge User(s):            ${self} -d purgeuser(s) --user=<s> [ --commit ]
+  Delete user from group:   ${self} -d groupuser --user=<s> --group=<s>
   Delete a group:           ${self} -d group --group=<s> [ --commit ]
   Delete SSH key:           ${self} -d sshkey --user=<s> --sshkey=<i> or --sshfile=<s>
   Delete SUDO role:         ${self} -d sudorole --sudorole=<s> [ --commit ]
@@ -309,8 +310,8 @@ List Actions
   List group(s):            ${self} -l group(s) [ --gid=<i> ]
   List user's SSH keys:     ${self} -l sshkeys --user=<s>
 _END_
-    exit;
 
+    exit;
 }
 
 ############
@@ -2569,7 +2570,7 @@ sub load_config_variables {
 
 # my @add    = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
 # my @check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );
-# my @delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
+# my @delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm" );
 # my @modify = ( "user", "group", "sudorole" );
 # my @list   = ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
 
@@ -2584,7 +2585,7 @@ sub check_actions {
     # my $mode;
     # $mode = 'add'    if ($action_add);      # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" 
     # $mode = 'check'  if ($action_check);    # "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"
-    # $mode = 'delete' if ($action_delete);   # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"
+    # $mode = 'delete' if ($action_delete);   # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"
     # $mode = 'modify' if ($action_modify);   # "user", "group", "sudorole"
     # $mode = 'list'   if ($action_list);     # "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"
 
@@ -2877,7 +2878,7 @@ sub check_actions {
             }
         }    
     } elsif ( de($action_delete) ) {
-        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser" );
+        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm" );
         given ($action_delete) {
             when ("user") {
                 if ($input_user) {
@@ -3006,7 +3007,7 @@ sub check_actions {
                     &return_message( "WARN", "To purge users please add the switch --commit" );
                 }    
             }
-            when ("rmuser") {
+            when ("rm") {
                 if ($input_user) {
                     my $result = &delete_user( $input_user, "delete" );
                     if ( $result == 0 ) {
@@ -3238,7 +3239,7 @@ Actions:
 
     -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
     -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
-    -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"]
+    -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
     -m, --modify            modify ["user", "group", "sudorole"]
     -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
     -h, --help              display this help and exit
@@ -3278,7 +3279,7 @@ check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
 
 =item I<-d, --delete>
 
-delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rmuser"]
+delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
 
 =item I<-m, --modify>
 
@@ -3401,9 +3402,11 @@ B<Delete Actions>
  Disable user:
     ldapadmin -d user --user=<s>
  Delete user:
-    ldapadmin -d rmuser --user=<s> [ -- commit ]   
+    ldapadmin -d rm --user=<s> [ -- commit ]   
+ Purge User(s)
+    ldapadmin -d purgeuser(s) --user=<s> [ --commit ]
  Delete user from group:
-    ldapadmin -d user --user=<s> --group=<s>
+    ldapadmin -d groupuser --user=<s> --group=<s>
  Delete a group:
     ldapadmin -d group --group=<s> [ --commit ]
  Delete SSH key:
