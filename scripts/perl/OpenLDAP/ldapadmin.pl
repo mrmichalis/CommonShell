@@ -289,7 +289,8 @@ Check Actions
   Check SUDO command exist: ${self} -c sudocmd --sudorole=<s> --sudocmd=<s>
   
 Delete Actions
-  Delete user:              ${self} -d user --user=<s> [ --commit ]
+  Disable user:             ${self} -d user --user=<s>
+  Delete user:              ${self} -d rmuser --user=<s> [ -- commit ]
   Delete user from group:   ${self} -d user --user=<s> --group=<s>
   Purge User(s):            ${self} -d purgeuser(s) --user=<s> [ --commit ]
   Delete a group:           ${self} -d group --group=<s> [ --commit ]
@@ -298,7 +299,9 @@ Delete Actions
   Delete SUDO command:      ${self} -d sudocmd --sudorole=<s> --sudocmd=<s>
 
 Modify Actions
-  Modify user:              ${self} -m user --user=<i> [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+  Modify user:              ${self} -m user --user=<i> 
+                            [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s>
+                              --option=sn=<surname> --option=cn=<common name> ]
   Modify group:             ${self} -m group --group=<i> [--renameto=<s> --gid=<s> ]
 
 List Actions
@@ -496,9 +499,8 @@ sub add_user {
         ]
     );
     if ( $result->code ) {
-        &return_message( "FATAL",
-            "An error occurred binding to the LDAP server: "
-              . ldap_error_text( $result->code ) );
+        &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+            . ldap_error_text( $result->code ) );
         print $result->error;
     }
 
@@ -842,16 +844,14 @@ sub delete_user {
     my $status = &get_user_status;
 
     if ( $del_action eq "purge" ) {
-        &return_message( "DEBUG",
-            "We are removing the user from LDAP if they are disabled" );
+        &return_message( "DEBUG", "We are removing the user from LDAP if they are disabled" );
         if ( $status eq "FALSE" ) {
             &return_message( "INFO", "${user} is not disabled in LDAP" );
             return 3;
         }
     }
     elsif ( $del_action eq "delete" ) {
-        &return_message( "DEBUG",
-            "We dont care we are removing the user from LDAP" );
+        &return_message( "DEBUG", "We dont care we are removing the user from LDAP" );
     }
     else {
         &return_message( "FATAL", "Not delete action set" );
@@ -871,9 +871,8 @@ sub delete_user {
             scope  => "one"
         );
         if ( $result->code ) {
-            &return_message( "FATAL",
-                "An error occurred binding to the LDAP server: "
-                  . ldap_error_text( $result->code ) );
+            &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                . ldap_error_text( $result->code ) );
         }
         my $entries = $result->entries;
 
@@ -883,28 +882,22 @@ sub delete_user {
         }
         else {
             &return_message( "DEBUG", "Removing ${user} from groups" );
-            &return_message( "DEV",
-                "\result->entries\n" . Dumper( $result->entries ) );
+            &return_message( "DEV", "\result->entries\n" . Dumper( $result->entries ) );
             foreach my $entry ( $result->entries ) {
-                my $dn =
-                  "cn=" . $entry->get_value('cn') . ",${ou_groups},${base}";
+                my $dn = "cn=" . $entry->get_value('cn') . ",${ou_groups},${base}";
                 &return_message( "DEBUG", "dn: $dn" );
                 if ($commit) {
                     my $mod_result =
                       $ldap->modify( $dn,
                         changes => [ 'delete' => [ 'memberUid' => ${user} ] ] );
                     if ( $mod_result->code ) {
-                        &return_message( "FATAL",
-                            "An error occurred binding to the LDAP server: "
-                              . ldap_error_text( $mod_result->code ) );
+                        &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                            . ldap_error_text( $mod_result->code ) );
                     }
-                    &return_message( "INFO",
-                        "Removed ${user} from " . $entry->get_value('cn') );
+                    &return_message( "INFO", "Removed ${user} from " . $entry->get_value('cn') );
                 }
                 else {
-                    &return_message( "WARN",
-                            "To remove ${user} from "
-                          . $entry->get_value('cn')
+                    &return_message( "WARN", "To remove ${user} from " . $entry->get_value('cn')
                           . " please add the switch --commit" );
                 }
             }
@@ -916,15 +909,13 @@ sub delete_user {
         &return_message( "DEBUG", "deleting user ${user}" );
         $result = $ldap->delete($dn);
         if ( $result->code ) {
-            &return_message( "FATAL",
-                "An error occurred binding to the LDAP server: "
-                  . ldap_error_text( $result->code ) );
+            &return_message( "FATAL", "An error occurred binding to the LDAP server: "
+                . ldap_error_text( $result->code ) );
         }
         return 0;
     }
     else {
-        &return_message( "DEBUG",
-            "confirm switch not set, not deleting user ${user}" );
+        &return_message( "DEBUG", "confirm switch not set, not deleting user ${user}" );
         return 2;
     }
 }
@@ -1051,10 +1042,11 @@ sub change_user_status {
     my $result = $ldap->modify( $dn,
         'replace' => [ 'pwdLockout' => ${pwdLockout}, 'loginShell' => $shell ]
     );
+    &return_message( "DEBUG", "Set pwdLockout=${pwdLockout} and loginShell=${shell}" );
+
     if ( $result->code ) {
-        &return_message( "FATAL",
-            "An error occurred binding to the LDAP server: "
-              . ldap_error_text( $result->code ) );
+        &return_message( "FATAL", "An error occurred binding to the LDAP server: " 
+            . ldap_error_text( $result->code ) );
     }
 
     # return command completed
@@ -1384,7 +1376,8 @@ sub modify_user {
     }
     &return_message( "DEBUG", "$params->{user} exists" );
 
-    if (de($params->{"uid"}) + 
+    if (de($params->{"user"}) +
+        de($params->{"uid"}) + 
         de($params->{"gid"}) +
         de($params->{"description"}) +
         de($params->{"home"}) +
@@ -1545,6 +1538,7 @@ sub modify_user {
             );
         &LDAP_modify( $dn, 'replace', \@ReplaceArray );
     }
+
     ## modify -option=KEY=VALUE [SN, CN]
     if ( de(@opt_options) ) {
       my @valid_schema = ("sn","cn");
@@ -1558,7 +1552,7 @@ sub modify_user {
             @ReplaceArray = ( "$var", "$val" );
             &LDAP_modify( $dn, 'replace', \@ReplaceArray );          
         } else {
-            &return_message( "WARN", "${var} is not allowed please choose a valid schema" );
+            &return_message( "WARN", "${var} is not allowed please choose a valid schema attribute" );
             return 1;
         }
       }
@@ -2888,7 +2882,8 @@ sub check_actions {
             when ("user") {
                 if ($input_user) {
                     if ( !&change_user_status( $input_user, "lock" ) ) {
-                        print "${input_user} deleted\n";
+                        print "${input_user} disabled\n";
+                        print "${input_user} SHELL is set to /sbin/nologin\n";
                     }
                 } else {
                     &return_message( "FATAL", "you need to use the switch --user=<user>" );
@@ -3403,8 +3398,10 @@ B<Check Actions>
     ldapadmin -c sudocmd --sudorole=<s> --sudocmd=<s>
   
 B<Delete Actions>
+ Disable user:
+    ldapadmin -d user --user=<s>
  Delete user:
-    ldapadmin -d user --user=<s> [ --commit ]
+    ldapadmin -d rmuser --user=<s> [ -- commit ]   
  Delete user from group:
     ldapadmin -d user --user=<s> --group=<s>
  Delete a group:
@@ -3418,7 +3415,10 @@ B<Delete Actions>
 
 B<Modify Actions>
  Modify user:
-    ldapadmin -m user --user=<i> [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s> ]
+    ldapadmin -m user --user=<i>
+    [ --renameto=<s> --uid=<s> --description=<s> --homedir=<i> --shell=<s>
+      --option=sn=<surname> --option=cn=<common name> ]
+
  Modify group:
     ldapadmin -m group --group=<i> [--renameto=<s> --gid=<s> ]
 
