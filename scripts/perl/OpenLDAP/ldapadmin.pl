@@ -307,6 +307,7 @@ Modify Actions
 
 List Actions
   List user(s):             ${self} -l user(s) [ --user=<s> --user=<i> --uid=<s> ]
+  List disabled users:      ${self} -l disabledusers
   List group(s):            ${self} -l group(s) [ --gid=<i> ]
   List user's SSH keys:     ${self} -l sshkeys --user=<s>
 _END_
@@ -3428,6 +3429,8 @@ B<Modify Actions>
 B<List Actions>
  List user:
     ldapadmin -l user --user=<s> --user=<i> [ --uid=<s> ]
+ List user:
+    ldapadmin -l disbledusers
  List all users:
     ldapadmin -l users
  List group:
