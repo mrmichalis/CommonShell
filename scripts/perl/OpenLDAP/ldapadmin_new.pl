@@ -490,9 +490,8 @@ sub add_user {
             'pwdLockout'    => 'FALSE',
             'sshpublickey'  => '',
             'objectclass'   => [
-                'organizationalPerson', 'top',
-                'person',               'posixAccount',
-                'ldapPublicKey',        'pwdPolicy'
+                'OpenLDAPperson', 'organizationalPerson', 'top', 
+                'person', 'posixAccount', 'ldapPublicKey', 'pwdPolicy'
             ]
         ]
     );
@@ -1385,7 +1384,16 @@ sub modify_user {
     }
     &return_message( "DEBUG", "$params->{user} exists" );
 
- 
+    if (de($params->{"uid"}) + 
+        de($params->{"gid"}) +
+        de($params->{"description"}) +
+        de($params->{"home"}) +
+        de($params->{"shell"}) +
+        de($params->{"pass"}) == 0) {
+        &return_message( "WARN", "No Action has been defined" );
+        return 1;
+    }
+
     if ( $rename_user ) {
        # check that the new user name is not reserved
         if ( grep /^${rename_user}$/, @reserved_users ) {
@@ -3203,7 +3211,7 @@ if (de($action_add)
   + de($action_delete)
   + de($action_modify)
   + de($action_list) == 0) {
-  return_message( "DEBUG", "No Action has been defined" );
+  &return_message( "DEBUG", "No Action has been defined" );
   &usage;
 }
 
