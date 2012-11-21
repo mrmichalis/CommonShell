@@ -291,7 +291,7 @@ Check Actions
   
 Delete Actions
   Disable user:             ${self} -d user --user=<s>
-  Delete user:              ${self} -d rm --user=<s> [ -- commit ]
+  Delete user:              ${self} -d rm --user=<s> [ --commit ]
   Purge User(s):            ${self} -d purgeuser(s) --user=<s> [ --commit ]
   Delete user from group:   ${self} -d groupuser --user=<s> --group=<s>
   Delete a group:           ${self} -d group --group=<s> [ --commit ]
@@ -3402,7 +3402,7 @@ B<Delete Actions>
  Disable user:
     ldapadmin -d user --user=<s>
  Delete user:
-    ldapadmin -d rm --user=<s> [ -- commit ]   
+    ldapadmin -d rm --user=<s> [ --commit ]   
  Purge User(s)
     ldapadmin -d purgeuser(s) --user=<s> [ --commit ]
  Delete user from group:
