@@ -161,7 +161,6 @@ my $log_level;              # --loglevel=<i>
 my $debug;                  # --debug
 my $devdebug;               # --devdebug || -dd
 
-my $help;                   # --help || -h
 my $man;                    # --man || --doc
 my $show_version;           # --version || -v
 my $commit;                 # --commit
@@ -172,7 +171,7 @@ my @opt_options = ();       # --option=KEY=VALUE || -o=KEY=VALUE
 pod2usage( -exitval => 2, -input => $0 ) if ( ( @ARGV == 0 ) && ( -t STDIN ) );
 
 Getopt::Long::GetOptions(
-    "help|h"                => \$help,
+    "help|h"                => sub { &usage; },
     "man|perldoc|doc"       => \$man,
     "user|u=s"              => \$input_user,
     "renameto=s"            => \$input_rename_to,
@@ -261,7 +260,7 @@ Actions:
 
 Common Options:
   --user=<USER>             login user name
-  --comment="COMMENT"       GECOS field of the new account
+  --comment="COMMENT"       or --description="DESCRIPTION" is GECOS field of the new account 
   --homedir=HOME_DIR        home directory of new account
   --gid=<GID>               id of the primary group of the new account
   --renameto=<USER/GROUP>   rename field, used when you need to rename a user or group
@@ -2715,7 +2714,7 @@ sub check_actions {
                     &return_message( "DEBUG", "Only uid has been defined" );
                     &return_message( "DEBUG", "uid: ${input_uid}" );
                     if ( my $user = &get_id_name( $ou_users, "uidNumber", $input_uid ) ) {
-                        print "${user}\n";
+                        print "user: ${user}\n";
                         exit 0;
                     } else {
                         print "uid avaliable\n";
@@ -2725,7 +2724,7 @@ sub check_actions {
                     &return_message( "DEBUG", "Only user has been defined" );
                     &return_message( "DEBUG", "user: ${input_user}" );
                     if ( my $uid = &get_id_name( $ou_users, "uid", $input_user ) ) {
-                        print "${uid}\n";
+                        print "uid: ${uid}\n";
                         exit 0;
                     } else {
                         print "user avaliable\n";
@@ -3186,10 +3185,6 @@ if ($man) {
     exit 0;
 }
 
-if ($help) {
-    &usage;
-}
-
 # connect to LDAP server.
 $ldap = Net::LDAP->new($uri)
   or
@@ -3232,30 +3227,36 @@ ldapadmin - create, delete or modify unix users, groups and sudoers permissions 
 
 =over 8
 
-=item B<ldapadmin> 
+=item B<ldapadmin> [ACTION] [OPTION...]
 
 First option must be a mode specifier.
 
 Actions:
 
-    -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
-    -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
-    -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
-    -m, --modify            modify ["user", "group", "sudorole"]
-    -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
-    -h, --help              display this help and exit
-        --man               display man page
-        --debug             increase verbosity level by one
-        --loglevel=<LEVEL>  level is between 1-6, 1 being debug
-        --version           output version information and exit
+ -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
+ -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+ -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
+ -m, --modify            modify ["user", "group", "sudorole"]
+ -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+ -h, --help              display this help and exit
+     --man               display man page
+     --debug             increase verbosity level by one
+     --loglevel=<LEVEL>  level is between 1-6, 1 being debug
+     --version           output version information and exit
 
 
-Common Options: 
+Common Options:
 
-  [--comment="<comment>"] [--config=<config_file>] [--commit] [--defaultguid=<gid>] 
-  [--homedir=<home_dir] [--user=<user>] [--uid=<uid>] [--group=<group>]
-  [--gid=<gid>] [--renameto=<user/group>] [--shell=<shell>] [--sshkey=<key_number>]
-  [--sshfile=<authorized_keys>] [--sudorole=<role>] [--sudocmd=<command>]
+  --user=<USER>             login user name
+  --comment="COMMENT"       or --description="DESCRIPTION" is GECOS field of the new account
+  --homedir=HOME_DIR        home directory of new account
+  --gid=<GID>               id of the primary group of the new account
+  --renameto=<USER/GROUP>   rename field, used when you need to rename a user or group
+  --group=<GROUP>           name of the group
+  --gid=<GID>               id of the group
+  --sudorole=<ROLE>         SUDO role (USER or GROUP)
+  --sudocmd=<COMMAND>       commands which users can run using sudo
+  --config=<FILE>           config file
 
 =back
 
