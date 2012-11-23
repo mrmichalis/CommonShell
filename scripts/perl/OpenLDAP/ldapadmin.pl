@@ -249,7 +249,7 @@ First option must be a mode specifier:
 Actions:
   -a, --add                 add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
   -c, --check               check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
-  -d, --delete              delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
+  -d, --delete              delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"]
   -m, --modify              modify ["user", "group", "sudorole"]
   -l, --list                list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
   -h, --help                display this help and exit
@@ -288,9 +288,9 @@ Check Actions
   Check SUDO role:          ${self} -c sudorole --sudorole=<s>
   Check SUDO command exist: ${self} -c sudocmd --sudorole=<s> --sudocmd=<s>
   
-Delete Actions
+Disable/Delete Actions
   Disable user:             ${self} -d user --user=<s>
-  Delete user:              ${self} -d rm --user=<s> [ --commit ]
+  Expunge user:             ${self} -d expungeuser --user=<s> [ --commit ]
   Purge User(s):            ${self} -d purgeuser(s) --user=<s> [ --commit ]
   Delete user from group:   ${self} -d groupuser --user=<s> --group=<s>
   Delete a group:           ${self} -d group --group=<s> [ --commit ]
@@ -307,6 +307,7 @@ Modify Actions
 List Actions
   List user(s):             ${self} -l user(s) [ --user=<s> --user=<i> --uid=<s> ]
   List disabled users:      ${self} -l disabledusers
+  List user's status:       ${self} -l userstatus --user=<s>
   List group(s):            ${self} -l group(s) [ --gid=<i> ]
   List user's SSH keys:     ${self} -l sshkeys --user=<s>
 _END_
@@ -2570,7 +2571,7 @@ sub load_config_variables {
 
 # my @add    = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
 # my @check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );
-# my @delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm" );
+# my @delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser" );
 # my @modify = ( "user", "group", "sudorole" );
 # my @list   = ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
 
@@ -2585,7 +2586,7 @@ sub check_actions {
     # my $mode;
     # $mode = 'add'    if ($action_add);      # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" 
     # $mode = 'check'  if ($action_check);    # "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"
-    # $mode = 'delete' if ($action_delete);   # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"
+    # $mode = 'delete' if ($action_delete);   # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"
     # $mode = 'modify' if ($action_modify);   # "user", "group", "sudorole"
     # $mode = 'list'   if ($action_list);     # "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"
 
@@ -2878,7 +2879,7 @@ sub check_actions {
             }
         }    
     } elsif ( de($action_delete) ) {
-        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm" );
+        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser" );
         given ($action_delete) {
             when ("user") {
                 if ($input_user) {
@@ -3007,7 +3008,7 @@ sub check_actions {
                     &return_message( "WARN", "To purge users please add the switch --commit" );
                 }    
             }
-            when ("rm") {
+            when ("expungeuser") {
                 if ($input_user) {
                     my $result = &delete_user( $input_user, "delete" );
                     if ( $result == 0 ) {
@@ -3235,7 +3236,7 @@ Actions:
 
  -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
  -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
- -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
+ -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"]
  -m, --modify            modify ["user", "group", "sudorole"]
  -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
  -h, --help              display this help and exit
@@ -3281,7 +3282,7 @@ check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
 
 =item I<-d, --delete>
 
-delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "rm"]
+delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"]
 
 =item I<-m, --modify>
 
@@ -3400,11 +3401,11 @@ B<Check Actions>
  Check SUDO command exist:
     ldapadmin -c sudocmd --sudorole=<s> --sudocmd=<s>
   
-B<Delete Actions>
+B<Disable/Delete Actions>
  Disable user:
     ldapadmin -d user --user=<s>
- Delete user:
-    ldapadmin -d rm --user=<s> [ --commit ]   
+ Expunge user:
+    ldapadmin -d expungeuser --user=<s> [ --commit ]   
  Purge User(s)
     ldapadmin -d purgeuser(s) --user=<s> [ --commit ]
  Delete user from group:
@@ -3432,6 +3433,8 @@ B<List Actions>
     ldapadmin -l user --user=<s> --user=<i> [ --uid=<s> ]
  List user:
     ldapadmin -l disbledusers
+ List user's status:
+    ldapadmin -l userstatus --user=<s>
  List all users:
     ldapadmin -l users
  List group:
