@@ -248,10 +248,10 @@ First option must be a mode specifier:
 
 Actions:
   -a, --add                 add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
-  -c, --check               check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+  -c, --check               check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus"]
   -d, --delete              delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"]
   -m, --modify              modify ["user", "group", "sudorole"]
-  -l, --list                list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+  -l, --list                list   ["user", "group", "users", "groups", "sshkeys", "disabledusers"]
   -h, --help                display this help and exit
       --man                 display man page
       --debug               increase verbosity level by one
@@ -283,6 +283,7 @@ Add Actions
 
 Check Actions 
   Check user:               ${self} -c user --user=<s> [ --uid=<i> ]
+  Check user's status:      ${self} -c userstatus --user=<s>
   Check group:              ${self} -c group --user=<s> [ --gid=<i> ]
   Check SSH key:            ${self} -c sshkey --user=<s> --sshfile=<s>
   Check SUDO role:          ${self} -c sudorole --sudorole=<s>
@@ -307,7 +308,6 @@ Modify Actions
 List Actions
   List user(s):             ${self} -l user(s) [ --user=<s> --user=<i> --uid=<s> ]
   List disabled users:      ${self} -l disabledusers
-  List user's status:       ${self} -l userstatus --user=<s>
   List group(s):            ${self} -l group(s) [ --gid=<i> ]
   List user's SSH keys:     ${self} -l sshkeys --user=<s>
 _END_
@@ -2570,10 +2570,10 @@ sub load_config_variables {
 }
 
 # my @add    = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
-# my @check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );
+# my @check  = ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus" );
 # my @delete = ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser" );
 # my @modify = ( "user", "group", "sudorole" );
-# my @list   = ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
+# my @list   = ( "user", "group", "users", "groups", "sshkeys", "disabledusers" );
 
 sub check_actions {
     if (de($action_add)
@@ -2585,10 +2585,10 @@ sub check_actions {
     }
     # my $mode;
     # $mode = 'add'    if ($action_add);      # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" 
-    # $mode = 'check'  if ($action_check);    # "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"
+    # $mode = 'check'  if ($action_check);    # "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus"
     # $mode = 'delete' if ($action_delete);   # "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"
     # $mode = 'modify' if ($action_modify);   # "user", "group", "sudorole"
-    # $mode = 'list'   if ($action_list);     # "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"
+    # $mode = 'list'   if ($action_list);     # "user", "group", "users", "groups", "sshkeys", "disabledusers"
 
     if ( de($action_add) ) {
         # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
@@ -2708,8 +2708,8 @@ sub check_actions {
             }
         }
     } elsif ( de($action_check) ) {
-        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name" );       
-        given ($action_check) {            
+        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus" );       
+        given ($action_check) {
             when ("user") {
                 if ( $input_uid && !$input_user ) {
                     &return_message( "DEBUG", "Only uid has been defined" );
@@ -2873,6 +2873,19 @@ sub check_actions {
                     &return_message( "FATAL", "you need to use the switch --user=<user> or --group=<group>" );
                 }
             }
+            when ("userstatus") {
+                if ($input_user) {
+                    if ( &get_user_status($input_user) eq "TRUE" ) {
+                        print "disabled\n";
+                        exit 1;
+                    } else {
+                        print "enabled\n";
+                        exit 0;
+                    }
+                } else {
+                    &return_message( "FATAL", "you need to use the switch --user=<USER>" );
+                }    
+            }            
             default {
                 &return_message( "FATAL", "The shit hit the fan: '${action_check}' is not a vaild action" );
                 exit 1;
@@ -3080,7 +3093,7 @@ sub check_actions {
             }
         }
     } elsif ( de($action_list) ) {
-        # ( "user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus" );
+        # ( "user", "group", "users", "groups", "sshkeys", "disabledusers" );
         given ($action_list) {
             when ("user") {
                 if ( ( !$input_user && $input_uid ) || ( $input_user && !$input_uid ) )
@@ -3129,19 +3142,6 @@ sub check_actions {
             }
             when ("disabledusers") {
                 &show_users("disabled");
-            }
-            when ("userstatus") {
-                if ($input_user) {
-                    if ( &get_user_status($input_user) eq "TRUE" ) {
-                        print "disabled\n";
-                        exit 1;
-                    } else {
-                        print "enabled\n";
-                        exit 0;
-                    }
-                } else {
-                    &return_message( "FATAL", "you need to use the switch --user=<USER>" );
-                }    
             }
             default {
                 &return_message( "FATAL", "The shit hit the fan: '${action_list}' is not a vaild action" );
@@ -3235,10 +3235,10 @@ First option must be a mode specifier.
 Actions:
 
  -a, --add               add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
- -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+ -c, --check             check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus"]
  -d, --delete            delete ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser"]
  -m, --modify            modify ["user", "group", "sudorole"]
- -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+ -l, --list              list   ["user", "group", "users", "groups", "sshkeys", "disabledusers"]
  -h, --help              display this help and exit
      --man               display man page
      --debug             increase verbosity level by one
@@ -3278,7 +3278,7 @@ add    ["user", "group", "sshkey", "sudorole", "sudocmd", "groupuser"]
 
 =item I<-c, --check>
 
-check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name"]
+check  ["user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus"]
 
 =item I<-d, --delete>
 
@@ -3290,7 +3290,7 @@ modify ["user", "group", "sudorole"]
 
 =item I<-l, --list>
 
-list   ["user", "group", "users", "groups", "sshkeys", "disabledusers", "userstatus"]
+list   ["user", "group", "users", "groups", "sshkeys", "disabledusers"]
 
 =item B<--comment>=I<COMMENT>
 
@@ -3392,6 +3392,8 @@ B<Add Actions>
 B<Check Actions>
  Check user:
     ldapadmin -c user --user=<s> [ --uid=<i> ]
+ Check user's status:
+    ldapadmin -c userstatus --user=<s>
  Check group:
     ldapadmin -c group --user=<s> [ --gid=<i> ]
  Check SSH key:
@@ -3433,8 +3435,6 @@ B<List Actions>
     ldapadmin -l user --user=<s> --user=<i> [ --uid=<s> ]
  List user:
     ldapadmin -l disbledusers
- List user's status:
-    ldapadmin -l userstatus --user=<s>
  List all users:
     ldapadmin -l users
  List group:
