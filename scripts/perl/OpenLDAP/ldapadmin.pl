@@ -2591,7 +2591,7 @@ sub check_actions {
     # $mode = 'list'   if ($action_list);     # "user", "group", "users", "groups", "sshkeys", "disabledusers"
 
     if ( de($action_add) ) {
-        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
+        # ACTION ADD ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser" );
         given ($action_add) {
             when("user") {
                 if ( $input_user && $input_description ) {
@@ -2708,7 +2708,7 @@ sub check_actions {
             }
         }
     } elsif ( de($action_check) ) {
-        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus" );       
+        # ACTION CHECK ( "user", "group", "sshkey", "sudorole", "sudocmd", "uid", "name", "userstatus" );       
         given ($action_check) {
             when ("user") {
                 if ( $input_uid && !$input_user ) {
@@ -2892,7 +2892,7 @@ sub check_actions {
             }
         }    
     } elsif ( de($action_delete) ) {
-        # ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser" );
+        # ACTION DELETE ( "user", "group", "sshkey", "sudorole", "sudocmd", "groupuser", "purgeuser", "purgeusers", "expungeuser" );
         given ($action_delete) {
             when ("user") {
                 if ($input_user) {
@@ -3044,7 +3044,7 @@ sub check_actions {
             }
         }
     } elsif ( de($action_modify) ) {
-        # ( "user", "group", "sudorole" );
+        # ACTION MODIFY ( "user", "group", "sudorole" );
         given ($action_modify) {
             when ("user") {
                 my $details;
@@ -3093,7 +3093,7 @@ sub check_actions {
             }
         }
     } elsif ( de($action_list) ) {
-        # ( "user", "group", "users", "groups", "sshkeys", "disabledusers" );
+        # ACTION LIST ( "user", "group", "users", "groups", "sshkeys", "disabledusers" );
         given ($action_list) {
             when ("user") {
                 if ( ( !$input_user && $input_uid ) || ( $input_user && !$input_uid ) )
