@@ -3,21 +3,41 @@
 
 use strict;
 use XML::Twig;
-use LWP;
-
-my $logfile = "./mylogfile.log"; # log file location
-my $out_message = ""; 			 # init log message
+use LWP::Simple; 
+ 
 # the URL for the xml to parse
-my $url		= 'http://sftp.uk3.ribob01.net:8080/publish-notification/zabbixThreadMonitor.jsp';
-my $twig 	= XML::Twig->parse( TwigHandlers => { 'thread[string(isRunning)="true"]' => \&process}, $url);
+my $url 		= 'http://pwspp.uk3.ribob01.net:8080/publish-notification/zabbixThreadMonitor.jsp';
+
+# Tidy up the XML contents by removing all blank spaces and new lines
+my $url_content = get($url);
+$url_content 	=~ s/^\s*\n+//mg;
+
+my $logfile = "mylogfile.log"; 		# log file location
+my $out_message = ""; 			 	# init log message
+my $threads	= XML::Twig->parse( TwigHandlers => { 'thread[string(isRunning)="true"]' => \&process_tp}, $url_content);
+my $ingestdiff	= XML::Twig->parse( TwigHandlers => { 'ingestMonitor' => \&process_ingest}, $url_content);
 
 # local
-# my $twig 	= new XML::Twig( TwigHandlers => { 'thread[string(isRunning)="false"]' => \&process });  
-# $twig->parsefile( "test.xml");
+# my $threads 	= new XML::Twig( TwigHandlers => { 'thread[string(isRunning)="false"]' => \&process });  
+# $threads->parsefile( "test.xml");
+
+sub process_ingest 
+{
+	my ($ingestdiff, $element) = @_;
+	my $sent = get_el_text('sent', $element);
+	my $received = get_el_text('received', $element);
+	my $diff = get_el_text('diff', $element);
+
+	print "sent: ", $sent, "\n";
+	print "received: ", $received,"\n";
+	print "diff: ", $diff,"\n";
+	print parse_secs(abs($diff/1000))."\n";	
+}
 
 # process xml file
-sub process {
-	my ($twig, $element) = @_;
+sub process_tp 
+{
+	my ($threads, $element) = @_;
 	#print $element->name,"\n";
 	foreach my $child ($element->children)
 	{
@@ -30,10 +50,31 @@ sub process {
 	undef $out_message;
 }
 
+# Get Child Text from Element
+sub get_el_text
+{	
+	my $name 	= shift;
+	my $element = shift;
+	my @elm 	= $element->children($name);
+	foreach my $elm (@elm)
+	{ return $elm->text; }
+}
+
+sub parse_secs 
+{
+    my $secs = shift;
+    if    ($secs >= 365*24*60*60) { return sprintf '%.1fy', $secs/(365*24*60*60) }
+    elsif ($secs >=     24*60*60) { return sprintf '%.1fd', $secs/(    24*60*60) }
+    elsif ($secs >=        60*60) { return sprintf '%.1fh', $secs/(       60*60) }
+    elsif ($secs >=           60) { return sprintf '%.1fm', $secs/(          60) }
+    else                          { return sprintf '%.1fs', $secs                }
+}
+
 # write to a log file
-sub log {
+sub log 
+{
 	my $message = shift;
-    	my $now     = localtime;
+    my $now     = localtime;
 	my $logmsg 	= "$now ERROR\t$message";
 	open LOGFILE, ">>$logfile" or die "cannot open logfile $logfile for append: $!";
 	print LOGFILE $logmsg;
