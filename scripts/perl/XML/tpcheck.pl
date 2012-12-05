@@ -12,9 +12,9 @@ my $url 		= 'http://pwspp.uk3.ribob01.net:8080/publish-notification/zabbixThread
 my $url_content = get($url);
 $url_content 	=~ s/^\s*\n+//mg;
 
-my $logfile = "mylogfile.log"; 		# log file location
+my $logfile 	= "mylogfile.log"; 		# log file location
 my $out_message = ""; 			 	# init log message
-my $threads	= XML::Twig->parse( TwigHandlers => { 'thread[string(isRunning)="true"]' => \&process_tp}, $url_content);
+my $threads		= XML::Twig->parse( TwigHandlers => { 'thread[string(isRunning)="true"]' => \&process_tp}, $url_content);
 my $ingestdiff	= XML::Twig->parse( TwigHandlers => { 'ingestMonitor' => \&process_ingest}, $url_content);
 
 # local
@@ -23,10 +23,10 @@ my $ingestdiff	= XML::Twig->parse( TwigHandlers => { 'ingestMonitor' => \&proces
 
 sub process_ingest 
 {
-	my ($ingestdiff, $element) = @_;
-	my $sent = get_el_text('sent', $element);
-	my $received = get_el_text('received', $element);
-	my $diff = get_el_text('diff', $element);
+	my ($ingestdiff, $element) 	= @_;
+	my $sent 					= get_el_text('sent', $element);
+	my $received 				= get_el_text('received', $element);
+	my $diff 					= get_el_text('diff', $element);
 
 	print "sent: ", $sent, "\n";
 	print "received: ", $received,"\n";
@@ -41,10 +41,7 @@ sub process_tp
 	#print $element->name,"\n";
 	foreach my $child ($element->children)
 	{
-		if ($child->name !~ /last/)
-		{
-			$out_message .= "\t".$child->name.": ".$child->text."\t";
-		}
+		$out_message .= "\t".$child->name.": ".$child->text."\t" if ($child->name !~ /last/);
 	}
 	&log ($element->parent->name." $out_message\n");
 	undef $out_message;
@@ -53,8 +50,7 @@ sub process_tp
 # Get Child Text from Element
 sub get_el_text
 {	
-	my $name 	= shift;
-	my $element = shift;
+	my ($name, $element) = @_;
 	my @elm 	= $element->children($name);
 	foreach my $elm (@elm)
 	{ return $elm->text; }
