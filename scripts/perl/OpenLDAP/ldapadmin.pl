@@ -348,10 +348,10 @@ sub add_user {
 
     # check if we are going to auto assign a uid
     if ( !$params->{uid} ) {
-        &return_message( "DEBUG", "Finding next avaliable uid" );
+        &return_message( "DEBUG", "Finding next available uid" );
         $auto++;
 
-        # we need to find an avaliable gid in LDAP
+        # we need to find an available gid in LDAP
         # - get all gids from ldap
         # - sort gids
         # - highest gid +1;
@@ -401,7 +401,7 @@ sub add_user {
                 "$params->{user} is already taken by ${result}" );
             return 1;
         }
-        &return_message( "DEBUG", "$params->{uid} is avaliable" );
+        &return_message( "DEBUG", "$params->{uid} is available" );
     }
 
     &return_message( "DEBUG", "Using uid=$params->{uid}" );
@@ -411,7 +411,7 @@ sub add_user {
         return 1;
     }
 
-    # check is the user is avaliable
+    # check is the user is available
     my $result = &get_id_name( $ou_users, "uid", $params->{user} );
     if ($result) {
         &return_message( "WARN",
@@ -419,7 +419,7 @@ sub add_user {
         if ( $auto == 1 ) { return 2; }
         return 1;
     }
-    &return_message( "DEBUG", "$params->{user} is avaliable" );
+    &return_message( "DEBUG", "$params->{user} is available" );
     if ( !$params->{description} ) {
         &return_message( "WARN", "--description not set" );
         return 1;
@@ -528,10 +528,10 @@ sub add_group {
 
     # are we going to auto assign a gid?
     if ( !$gid ) {
-        &return_message( "DEBUG", "Finding next avaliable gui" );
+        &return_message( "DEBUG", "Finding next available gui" );
         $auto++;
 
-        # we need to find an avaliable gid in LDAP
+        # we need to find an available gid in LDAP
         # - get all gids from ldap
         # - sort gids
         # - highest gid +1;
@@ -576,7 +576,7 @@ sub add_group {
             return 1;
         }
 
-        # check gid is avaliable
+        # check gid is available
         $result = &get_id_name( $ou_groups, "gidNumber", $gid );
         if ( $result eq $group ) {
             &return_message( "INFO", "${group}:${gid} already exists" );
@@ -586,17 +586,17 @@ sub add_group {
             &return_message( "WARN", "${gid} is already taken by ${result}" );
             return 1;
         }
-        &return_message( "DEBUG", "${gid} is avaliable" );
+        &return_message( "DEBUG", "${gid} is available" );
     }
 
-    # check group is avaliable
+    # check group is available
     $result = &get_id_name( $ou_groups, "cn", $group );
     if ($result) {
         &return_message( "WARN", "${group} is already taken by ${result}" );
         if ( $auto == 1 ) { return 2; }
         return 1;
     }
-    &return_message( "DEBUG", "${group} is avaliable" );
+    &return_message( "DEBUG", "${group} is available" );
 
     # lets go and create a group
     my $dn = "cn=${group},${ou_groups},${base}";
@@ -780,7 +780,7 @@ sub add_sudo_command {
     my $sudo_role = shift;
     my $sudo_cmd  = shift;
 
-    # check if the role is avaliable
+    # check if the role is available
     if ( !&check_sudo_command( $sudo_role, $sudo_cmd ) ) {
         return 2;
     }
@@ -1284,7 +1284,7 @@ sub delete_sudo_command {
     my $sudo_role = shift;
     my $sudo_cmd  = shift;
 
-    # check if the role is avaliable
+    # check if the role is available
     if ( &check_sudo_command( $sudo_role, $sudo_cmd ) ) {
         return 1;
     }
@@ -2718,7 +2718,7 @@ sub check_actions {
                         print "user: ${user}\n";
                         exit 0;
                     } else {
-                        print "uid avaliable\n";
+                        print "uid available\n";
                         exit 1;
                     }
                 } elsif ( !$input_uid && $input_user ) {
@@ -2728,7 +2728,7 @@ sub check_actions {
                         print "uid: ${uid}\n";
                         exit 0;
                     } else {
-                        print "user avaliable\n";
+                        print "user available\n";
                         exit 1;
                     }
                 } elsif ( $input_uid && $input_user ) {
@@ -2756,7 +2756,7 @@ sub check_actions {
                         print "${group}\n";
                         exit 0;
                     } else {
-                        print "gid avaliable\n";
+                        print "gid available\n";
                         exit 1;
                     }
                 } elsif ( !$input_gid && $input_group ) {
@@ -2766,7 +2766,7 @@ sub check_actions {
                         print "${gid}\n";
                         exit 0;
                     } else {
-                        print "group avaliable\n";
+                        print "group available\n";
                         exit 1;
                     }
                 } elsif ( $input_gid && $input_group ) {
@@ -2805,7 +2805,7 @@ sub check_actions {
                         print "taken\n";
                         exit 0;
                     } else {
-                        print "avaliable\n";
+                        print "available\n";
                         exit 1;
                     }
                 } else {
@@ -2817,7 +2817,7 @@ sub check_actions {
                     my $user = &get_id_name( $ou_users, "uidNumber", $input_uid );
                     if ( !$user ) {
                         &return_message( "DEBUG", "uid=${input_uid} does not exist" );
-                        print "avaliable\n";
+                        print "available\n";
                         exit 1;
                     } else {
                         &return_message( "DEBUG", "uid=${input_uid} user=${user}" );
@@ -2828,7 +2828,7 @@ sub check_actions {
                     my $group = &get_id_name( $ou_groups, "gidNumber", $input_gid );
                     if ( !$group ) {
                         &return_message( "DEBUG", "gid=${input_gid} does not exist" );
-                        print "avaliable\n";
+                        print "available\n";
                         exit 1;
                     } else {
                         &return_message( "DEBUG", "gid=${input_gid} group=${group}" );
@@ -2847,7 +2847,7 @@ sub check_actions {
                     if ( !$uid ) {
                         &return_message( "DEBUG",
                             "user=${input_user} does not exist" );
-                        print "avaliable\n";
+                        print "available\n";
                         exit 1;
                     } else {
                         &return_message( "DEBUG", "user=${input_user} uid=${uid}" );
@@ -2859,7 +2859,7 @@ sub check_actions {
                     if ( !$gid ) {
                         &return_message( "DEBUG",
                             "group=${input_group} does not exist" );
-                        print "avaliable\n";
+                        print "available\n";
                         exit 1;
                     } else {
                         &return_message( "DEBUG",
