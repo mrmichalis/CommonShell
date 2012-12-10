@@ -276,7 +276,7 @@ Examples:
 Add Actions
   Add user:                 ${self} -a user --user=<s> --comment=<s> [ --uid=<i> --homedir=<s> --shell=<s> --defaultgid=<i> --password=<s> ]
   Add user to a group:      ${self} -a groupuser --user=<s> --group=<s>
-  Add group:                ${self} -a group --group=<s> [ --gid=<i> ]
+  Add group:                ${self} -a group --group=<s> --comment=<s> || --description=<s> [ --gid=<i> ]
   Add SSH key:              ${self} -a sshkey --user=<s> --sshfile=<s>
   Add SUDO role:            ${self} -a sudorole --sudorole=<s>
   Add SUDO command to role: ${self} -a sudocmd --sudorole=<s> --sudocmd=<s>
@@ -516,7 +516,7 @@ sub add_group {
 
     # this is only to create a group with no users
     # add_group($group,$gid);
-    my ( $group, $gid ) = @_;
+    my ( $group, $description, $gid ) = @_;
     my $result;
     my $auto = 0;
 
@@ -607,6 +607,7 @@ sub add_group {
         attr => [
             'cn'          => $group,
             'gidnumber'   => $gid,
+            'description' => $description,
             'objectclass' => [ 'top', 'posixGroup' ]
         ]
     );
@@ -2622,8 +2623,8 @@ sub check_actions {
                 } 
             } 
             when ("group") {
-                if ($input_group) {
-                    my $result = &add_group( $input_group, $input_gid );
+                if ($input_group && $input_description) {
+                    my $result = &add_group( $input_group, $input_description, $input_gid );
                     if ( $result == 0 ) {
                         my $gid = &get_id_name( $ou_groups, "cn", $input_group );
                         # return 0 - created
@@ -2639,7 +2640,7 @@ sub check_actions {
                     }
                 }
                 else {
-                    &return_message( "FATAL", "you need to use the switch --group=<group> or switches --group=<group> --gid=<gid>" );
+                    &return_message( "FATAL", "you need to use the switch --group=<group> --description=<s> or switches --group=<group> --gid=<gid>" );
                 }
             }
             when ("sshkey") {
